@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: fastq-pos
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health/live
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: POS_TRUST_PROXY
+        value: "true"
+      - key: POS_COOKIE_SECURE
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: POS_SESSION_SECRET
+        generateValue: true
+      - key: POS_API_TOKEN
+        generateValue: true

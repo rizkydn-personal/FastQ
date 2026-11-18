@@ -1,0 +1,41 @@
+{
+  "name": "fastq-pos",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/copy-legacy.mjs && vite --host 127.0.0.1",
+    "dev:all": "concurrently -k \"npm run start\" \"npm run dev\"",
+    "build": "node scripts/copy-legacy.mjs && vite build",
+    "start": "node server.mjs",
+    "test": "node --test scripts/*.test.mjs",
+    "db:smoke": "node scripts/db-smoke.mjs",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:status": "node scripts/db-status.mjs",
+    "db:maintenance": "node scripts/maintenance.mjs",
+    "cap:sync": "npm run build && cap sync",
+    "android:add": "cap add android",
+    "android:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
+    "@capacitor-mlkit/barcode-scanning": "^8.2.2",
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "pg": "^8.16.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "concurrently": "^9.2.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

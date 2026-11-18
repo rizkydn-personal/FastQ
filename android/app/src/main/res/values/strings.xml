@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FastQ</string>
+    <string name="title_activity_main">FastQ</string>
+    <string name="package_name">id.co.fastq.pos</string>
+    <string name="custom_url_scheme">id.co.fastq.pos</string>
+</resources>

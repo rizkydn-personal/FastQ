@@ -10,7 +10,9 @@
 .marketing-copy h1 span { color:var(--blue-600); }
 .marketing-copy>p { max-width:560px; color:var(--gray-700); font-size:18px; line-height:1.65; }
 .marketing-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:26px; }
-.marketing-actions .primary-action { display:inline-flex; align-items:center; justify-content:center; padding:0 20px; border-radius:10px; text-decoration:none; }
+.marketing-actions .primary-action { min-height:48px; display:inline-flex; align-items:center; justify-content:center; padding:0 20px; border:1px solid var(--blue-600); border-radius:10px; background:var(--blue-600); color:#fff; font-weight:700; text-decoration:none; transition:background-color .15s,border-color .15s,box-shadow .15s; }
+.marketing-actions .primary-action:hover { border-color:#1942B8; background:#1942B8; }
+.marketing-actions .primary-action:focus-visible { outline:3px solid var(--blue-600); outline-offset:3px; }
 .marketing-note { margin-top:20px; color:var(--gray-700); font-size:14px; line-height:1.5; }
 .marketing-visual { min-height:350px; display:grid; place-items:center; }
 .marketing-visual img { width:min(100%,360px); height:auto; animation:marketing-float 3s ease-in-out infinite; }
@@ -24,3 +26,7 @@
 .marketing-footer { padding:22px 24px; border-top:1px solid var(--gray-300); color:var(--gray-700); text-align:center; font-size:14px; }
 .marketing-login,.secondary-action { border-radius: 10px; }
 @media(max-width:760px) { .marketing-nav{height:64px;padding:0 16px}.marketing-hero{min-height:0;padding:50px 20px 34px;grid-template-columns:1fr;gap:18px}.marketing-copy h1{font-size:42px}.marketing-copy>p{font-size:16px}.marketing-visual{min-height:190px;grid-row:1}.marketing-visual img{width:min(56vw,220px)}.marketing-features{grid-template-columns:1fr;padding:10px 20px 34px;gap:10px}.marketing-features article{padding:17px}.marketing-login{min-height:44px}.dash-login{margin:7vh auto;padding:20px}.dash-title h1,.dash-login h1{font-size:24px}.metric-grid article strong{font-size:24px}.table-scroll th,.table-scroll td{padding:10px 8px}}
+
+.offline-badge { display:inline; margin-right:6px; padding:0; border-radius:0; background:transparent; color:var(--blue-900); font-size:12px; font-weight:750; }
+.marketing-features article { box-shadow:0 1px 2px rgba(11,46,107,.05); }
+.marketing-features article>span { display:inline-grid; place-items:center; width:32px; height:32px; border-radius:9px; background:var(--blue-100); }

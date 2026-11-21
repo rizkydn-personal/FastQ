@@ -20,6 +20,10 @@ const client = await pool.connect();
 try {
   await client.query('BEGIN');
   await client.query("SELECT pg_advisory_xact_lock(hashtext('fastq-pos-schema-migrations'))");
+  await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pos_app_runtime`);
+  await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT USAGE, SELECT ON SEQUENCES TO pos_app_runtime`);
   await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
     version integer PRIMARY KEY,
     name text NOT NULL,
@@ -50,6 +54,9 @@ try {
     console.log(`Migrasi ${migration.version} (${migration.name}) diterapkan.`);
     latestVersion = migration.version;
   }
+  await client.query('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pos_app_runtime');
+  await client.query('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO pos_app_runtime');
+  await client.query('REVOKE INSERT, UPDATE, DELETE ON TABLE public.schema_migrations FROM pos_app_runtime');
   await client.query('COMMIT');
 } catch (error) {
   await client.query('ROLLBACK');

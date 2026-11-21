@@ -32,7 +32,9 @@ const RUNTIME_ROLE_CHECK = `
   WHERE r.rolname=current_user
 `;
 
-export async function checkDatabaseReadiness(pool, requiredSchemaVersion = 3) {
+export const REQUIRED_SCHEMA_VERSION = 4;
+
+export async function checkDatabaseReadiness(pool, requiredSchemaVersion = REQUIRED_SCHEMA_VERSION) {
   const blockers = [];
   let roleResult;
   try { roleResult = await pool.query(RUNTIME_ROLE_CHECK); }

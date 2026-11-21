@@ -33,7 +33,8 @@ DO $$ BEGIN
   END IF;
 END $$;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS login_identity text;
-CREATE UNIQUE INDEX IF NOT EXISTS users_login_identity_unique ON users(login_identity);
+DROP INDEX IF EXISTS users_login_identity_unique;
+CREATE UNIQUE INDEX users_login_identity_unique ON users(login_identity) WHERE active = true AND login_identity IS NOT NULL;
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_salt text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_salt text;

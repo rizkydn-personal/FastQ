@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { createSyncHandler } from '../sync-handler.mjs';
-import { checkDatabaseReadiness } from '../database-policy.mjs';
+import { checkDatabaseReadiness, REQUIRED_SCHEMA_VERSION } from '../database-policy.mjs';
 import { postgresSslFromEnv } from '../postgres-config.mjs';
 
 for (const line of (await readFile(new URL('../.env', import.meta.url), 'utf8')).split(/\r?\n/)) {
@@ -22,7 +22,7 @@ let heldClient;
 let transactionClosed = true;
 
 try {
-  const readiness = await checkDatabaseReadiness(pool, 3);
+  const readiness = await checkDatabaseReadiness(pool, REQUIRED_SCHEMA_VERSION);
   if (!readiness.ready) throw new Error(`Database belum siap: ${readiness.reason}`);
   const cashier = await pool.query(
     `SELECT id,outlet_id,role,name FROM users

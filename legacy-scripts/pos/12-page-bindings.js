@@ -1,5 +1,6 @@
 function handleProductSearchEnter(event){if(event.key!=='Enter')return;event.preventDefault();const input=event.currentTarget,code=input.value.trim();if(!code)return;const normalized=code.toLowerCase(),product=state.products.find(item=>item.barcode===code||item.sku.toLowerCase()===normalized||item.variants?.some(variant=>variant.barcode===code||variant.sku.toLowerCase()===normalized));if(product){const variant=product.variants?.find(item=>item.barcode===code||item.sku.toLowerCase()===normalized);if(variant)addLine(product,variant);else addProduct(product);input.value='';renderProducts();return}const matches=shownProducts();if(matches.length===1){addProduct(matches[0]);input.value='';renderProducts()}else if(!matches.length)toast('Produk tidak ditemukan')}
 $('productSearch').onkeydown=handleProductSearchEnter;
+$('mobileCartLink').onclick=openCartPreview;
 await window.installAccounts({
   state, save, toast, modal, closeModal, esc, uid, hashCredential, openCartPreview,
   installSessionSync(run, persistCritical) {

@@ -16,3 +16,4 @@ coverage/
 android/.gradle/
 android/app/src/main/assets/public/
 android/local.properties
+*.crt

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkDatabaseReadiness } from '../database-policy.mjs';
+import { checkDatabaseReadiness, REQUIRED_SCHEMA_VERSION } from '../database-policy.mjs';
 import { postgresConnectionTlsStatus, postgresSslFromEnv } from '../postgres-config.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -21,7 +21,7 @@ if (!process.env.DATABASE_URL) {
   try {
     const { Pool } = await import('pg');
     pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 10000, query_timeout: 15000, ssl: postgresSslFromEnv() });
-    const result = await checkDatabaseReadiness(pool, 3);
+    const result = await checkDatabaseReadiness(pool, REQUIRED_SCHEMA_VERSION);
     const client = await pool.connect();
     let tls;
     try { tls = postgresConnectionTlsStatus(client); }

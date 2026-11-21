@@ -2,12 +2,12 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { access } from 'node:fs/promises';
 import { timingSafeEqual, createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
-import { createConnection } from 'node:net';
+import { createConnection, isIP } from 'node:net';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeIdentity } from './auth-identity.mjs';
 import { createAuthSecurity } from './auth-security.mjs';
-import { checkDatabaseReadiness } from './database-policy.mjs';
+import { checkDatabaseReadiness, REQUIRED_SCHEMA_VERSION } from './database-policy.mjs';
 import { createDashboardHandler } from './dashboard-handler.mjs';
 import { postgresConnectionTlsStatus, postgresSslFromEnv } from './postgres-config.mjs';
 import { serveStaticFile } from './static-files.mjs';
@@ -29,15 +29,14 @@ const host = process.env.HOST || '127.0.0.1';
 const apiToken = process.env.POS_API_TOKEN || '';
 const sessionSecret = process.env.POS_SESSION_SECRET || '';
 const totpEncryptionKey = process.env.POS_TOTP_ENCRYPTION_KEY || '';
+const isDevelopment = process.env.NODE_ENV === 'development';
 const { setSessionCookie, requireSameOrigin, authorized, sessionUser, encryptTotpSecret, decryptTotpSecret, verifyTotp } = createAuthSecurity({
   apiToken,
   sessionSecret,
   totpEncryptionKey,
-  cookieSecure: process.env.POS_COOKIE_SECURE !== 'false',
-  trustProxy: process.env.POS_TRUST_PROXY === 'true',
+  cookieSecure: !isDevelopment,
+  trustProxy: !isDevelopment,
 });
-const printerHost = process.env.POS_PRINTER_HOST || '';
-const printerPort = Number(process.env.POS_PRINTER_PORT || 9100);
 let pool;
 let schemaReady = false;
 let schemaCheckAt = 0;
@@ -52,7 +51,6 @@ const LOGIN_REQUEST_MAX_KEYS = 10_000;
 const LOGIN_MAX_IDENTITY_REQUESTS = 20;
 const LOGIN_MAX_REMOTE_REQUESTS = 120;
 const DUMMY_LOGIN_SALT = 'fastq-pos-login-dummy-salt-v1';
-const REQUIRED_SCHEMA_VERSION = 3;
 
 function consumeLoginRateLimit(map, key, limit, now) {
   let record = map.get(key);
@@ -154,7 +152,7 @@ async function ownerLogin(req, res) {
   requireSameOrigin(req);
   if (!pool) return json(res, 503, { error: 'DATABASE_URL belum dikonfigurasi.' });
   if (sessionSecret.length < 32) return json(res, 503, { error: 'POS_SESSION_SECRET minimal 32 karakter wajib dikonfigurasi.' });
-  const forwardedAddress = process.env.POS_TRUST_PROXY === 'true'
+  const forwardedAddress = !isDevelopment
     ? String(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim()
     : '';
   const remote = forwardedAddress || req.socket.remoteAddress || 'unknown';
@@ -348,8 +346,18 @@ async function getBackup(req, res, url) {
 
 async function printLan(req, res) {
   if (!authorized(req)) return json(res, 401, { error: 'Token API tidak valid atau belum dikonfigurasi.' });
-  if (!printerHost) return json(res, 503, { error: 'POS_PRINTER_HOST belum dikonfigurasi.' });
   const body = await readJson(req, 2_000_000);
+  const printerHost = typeof body.host === 'string' ? body.host.trim() : '';
+  const printerPort = Number(body.port);
+  const octets = printerHost.split('.').map(Number);
+  const privateIpv4 = isIP(printerHost) === 4 && (
+    octets[0] === 10
+    || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+    || (octets[0] === 192 && octets[1] === 168)
+  );
+  if (!privateIpv4 || !Number.isInteger(printerPort) || printerPort < 1024 || printerPort > 65535) {
+    return json(res, 400, { error: 'Alamat printer harus berupa IP privat IPv4 dan port TCP yang valid.' });
+  }
   if (typeof body.payload !== 'string' || body.payload.length > 1_500_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(body.payload)) {
     return json(res, 400, { error: 'Payload ESC/POS tidak valid.' });
   }

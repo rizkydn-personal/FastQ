@@ -4,6 +4,14 @@ export function reportDateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+export function formatSaleNumber(number) {
+  const value = String(number ?? '');
+  const legacy = /^TRX-(\d{12})-([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-[0-9a-f]{4}-[0-9a-f]{12}$/i.exec(value);
+  if (legacy) return `TRX-${legacy[1].slice(0, 6)}-${`${legacy[2]}${legacy[3]}${legacy[4]}`.toUpperCase()}`;
+  if (/^TRX-\d{6}-[0-9a-f]{16}$/i.test(value)) return value.toUpperCase();
+  return value.length > 27 ? `${value.slice(0, 9)}…${value.slice(-8)}` : value;
+}
+
 export function dateWithinReportPeriod(iso, period, chosen, now = new Date()) {
   const date = new Date(iso), day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === 'all') return true;
@@ -23,7 +31,7 @@ export function dateWithinReportPeriod(iso, period, chosen, now = new Date()) {
 
 export function reportChartSvg(series, { money = false, color = '#2563EB', label = 'Nilai' } = {}) {
   if (!series.length) return '<div class="report-chart-empty">Belum ada data pada periode ini.</div>';
-  const width = 640, height = 270, left = 72, right = 18, top = 18, bottom = 58, plotWidth = width - left - right, plotHeight = height - top - bottom;
+  const width = 640, height = 380, left = 72, right = 18, top = 18, bottom = 68, plotWidth = width - left - right, plotHeight = height - top - bottom;
   const maximum = Math.max(0, ...series.map(point => Number(point.value) || 0)), ceiling = maximum ? maximum * 1.12 : 1;
   const points = series.map((point, index) => ({ x: left + (series.length === 1 ? plotWidth / 2 : index * plotWidth / (series.length - 1)), y: top + plotHeight - (Number(point.value) || 0) / ceiling * plotHeight, source: point }));
   const path = points.reduce((value, point, index) => {
@@ -63,4 +71,18 @@ export function buildSalesTrend(sales, monthValue) {
   const byDate = new Map(points.map(point => [point.key, point]));
   sales.forEach(sale => { const point = byDate.get(reportDateKey(new Date(sale.at))); if (point) point.value += Number(sale.total) || 0; });
   return points;
+}
+
+export function rankLeastSellingProducts(products, productTotals, limit = 5) {
+  const ranked = Array.from(productTotals.values());
+  const knownNames = new Set(ranked.map(product => product.name));
+  for (const product of products) {
+    const key = product.id || product.name;
+    if (productTotals.has(key) || knownNames.has(product.name)) continue;
+    ranked.push({ name: product.name, quantity: 0, revenue: 0 });
+    knownNames.add(product.name);
+  }
+  return ranked
+    .sort((a, b) => a.quantity - b.quantity || a.revenue - b.revenue || a.name.localeCompare(b.name, 'id'))
+    .slice(0, Math.max(0, Math.floor(limit)));
 }

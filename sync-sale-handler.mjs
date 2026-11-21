@@ -41,9 +41,6 @@ export async function applySaleEvent({ client, event, scope, actor, deviceId, is
   }
   const existingSale = await client.query('SELECT status,metadata,cashier_name,subtotal_rupiah,discount_rupiah,tax_rupiah,service_rupiah,total_rupiah FROM sales WHERE id=$1 AND outlet_id=$2 FOR UPDATE', [s.id, scope]);
   if (existingSale.rowCount && (Number(existingSale.rows[0].subtotal_rupiah) !== s.subtotal || Number(existingSale.rows[0].discount_rupiah) !== s.discount || Number(existingSale.rows[0].tax_rupiah) !== s.tax || Number(existingSale.rows[0].service_rupiah) !== s.service || Number(existingSale.rows[0].total_rupiah) !== s.total)) throw Object.assign(new Error('Nilai transaksi yang sudah tersimpan tidak dapat diubah.'), { status: 409 });
-  if (!existingSale.rowCount && actor.role === 'Kasir' && BigInt(s.discount) * 100n > BigInt(s.subtotal) * 10n) {
-    throw Object.assign(new Error('Diskon transaksi Kasir melebihi batas 10%. Sinkronkan transaksi dengan akun Admin.'), { status: 403 });
-  }
   s.cashier = existingSale.rows[0]?.cashier_name || actor.name;
   let newPayments = s.payments;
   if (existingSale.rowCount) {

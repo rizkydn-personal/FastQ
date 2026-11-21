@@ -3,9 +3,9 @@
   --blue-600: #1D4ED8;
   --blue-100: #EAF0FB;
   --white: #FFFFFF;
-  --gray-50: #F5F4EF;
-  --gray-300: #D9E0EC;
-  --gray-700: #5B6577;
+  --gray-50: #F4F6FA;
+  --gray-300: #CBD5E1;
+  --gray-700: #334155;
   --red-600: #D92D20;
   --red-100: #FDECEA;
 }
@@ -21,3 +21,6 @@ body { background: var(--gray-50); color: #1F2937; font-family: Inter, ui-sans-s
 .brand-mark { display: block; width: 54px; height: 54px; border-radius: 4px; object-fit: contain; }
 @media (max-width: 760px) { .dash-login { margin: 7vh auto; padding: 20px; } .dash-title h1,.dash-login h1 { font-size: 24px; } .metric-grid article strong { font-size: 24px; } .table-scroll th,.table-scroll td { padding: 10px 8px; } }
 @media (prefers-reduced-motion: reduce) { .marketing-visual img { animation: none; } }
+
+:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+input:focus-visible, select:focus-visible { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 3px rgba(29, 78, 216, .18); }

@@ -1,0 +1,212 @@
+/* ==========================================================================
+   FastQ polish — Laporan + Detail transaksi (polish-laporan.css)
+   --------------------------------------------------------------------------
+   Dibuat ulang 2026-11-22 setelah file aslinya hilang pada insiden 05:23 WIB.
+   Setara dengan file yang hilang (~200 baris, 11 seksi); nilai target diambil
+   dari probe verifikasi sebelumnya (laporan_detail_after.json +
+   laporan_detail_recheck.json) dan diverifikasi ulang via injeksi di server
+   live (tanpa rebuild dist).
+   Scope: #page-reports + modal struk "Transaksi tersimpan".
+   Palet: biru primer #1D4ED8, navy #0B2E6B, netral #667085, garis #E2E8F0.
+   PENTING: file ini HARUS dimuat setelah polish.css dan polish-extra.css,
+   agar menang cascade pada spesifisitas yang sama.
+   ========================================================================== */
+
+/* --- 1. Kartu statistik --- */
+#page-reports .stats-grid { gap: 12px; }
+#page-reports .stat {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(11, 46, 107, .04);
+}
+#page-reports .stat-label { font-size: 13px; color: #667085; }
+#page-reports .stat-value { color: #0B2E6B; font-size: 26px; }
+#page-reports .report-count-value small { font-size: 12px; }
+@media (max-width: 640px) {
+  #page-reports .stat { padding: 14px; }
+  #page-reports .stat-value { font-size: 20px; }
+}
+
+/* --- 2. Panel --- */
+#page-reports .panel {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(11, 46, 107, .04);
+}
+#page-reports .panel-title { font-size: 16px; color: #0B2E6B; }
+@media (max-width: 640px) {
+  #page-reports .panel { padding: 16px; }
+  #page-reports .panel-title { font-size: 15px; }
+}
+
+/* --- 3. Toolbar laporan: kontrol 44px --- */
+#page-reports > .toolbar select,
+#page-reports > .toolbar input,
+#page-reports .report-chart-toolbar .field {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+/* --- 4. Split ringkasan / transaksi ---
+   0.7fr / 1.3fr HANYA di atas 1050px. JANGAN aturan split global tanpa
+   media query: aturan global sempat memecah layout 390 jadi 2 kolom sempit.
+   Di <=1050px split tetap 1 kolom (aturan polish.css yang sudah ada). */
+@media (min-width: 1051px) {
+  #page-reports .report-summary-split {
+    grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr);
+  }
+  /* ID transaksi di-truncate agar tabel muat penuh di dalam panel. */
+  #page-reports #salesBody td:first-child .hint {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* --- 5. Tabel (desktop): header abu lembut, sel navy --- */
+#page-reports .table-wrap { min-width: 0; }
+#page-reports th {
+  background: #F8FAFC;
+  color: #667085;
+  font-size: 12px;
+  text-transform: uppercase;
+  padding: 12px 14px;
+}
+#page-reports td {
+  color: #0B2E6B;
+  font-size: 14px;
+  padding: 14px;
+}
+#page-reports #salesBody td:first-child .hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- 6. Pill status: teks + dot warna (tanpa ceklis / elipsis / seru) --- */
+#page-reports .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-size: 12px;
+  font-weight: 600;
+}
+#page-reports .status::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+#page-reports .status.pending { background: #F1F5F9; color: #475569; }
+#page-reports .status.danger { background: #FEE2E2; color: #DC2626; }
+
+/* --- 7. Daftar peringkat (ringkasan periode) --- */
+#page-reports .report-rank-list li {
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px 0;
+}
+#page-reports .report-rank-number {
+  width: 24px;
+  height: 24px;
+  background: #DBEAFE;
+  font-size: 12px;
+  font-weight: 600;
+}
+#page-reports .report-rank-copy strong,
+#page-reports .report-rank-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+#page-reports .report-rank-copy small { font-size: 12px; color: #667085; }
+
+/* --- 8. Grafik: satu biru primer, tab 44px, legenda donut --- */
+#page-reports .report-chart-switch .button {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+}
+/* Warna garis tren di-override dari #2563EB (JS) ke #1D4ED8 via CSS:
+   properti CSS menang atas presentation attribute di SVG. */
+#page-reports #salesTrendChart svg path { stroke: #1D4ED8; }
+#page-reports #salesTrendChart svg circle { fill: #1D4ED8; }
+/* Palet donut tetap skala biru 5 warna (tidak diubah). */
+#page-reports .product-donut-copy strong { font-size: 13px; }
+#page-reports .product-donut-copy small { font-size: 12px; color: #667085; }
+
+/* --- 9. Kartu tabel di HP (<=640px) --- */
+@media (max-width: 640px) {
+  #page-reports .report-mobile-cards tr {
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    background: #FFFFFF;
+    padding: 12px;
+  }
+  #page-reports .report-mobile-sales tr:not(:has(td[colspan])) {
+    padding: 12px;
+    border-radius: 16px;
+  }
+  #page-reports .report-mobile-cards td { font-size: 13px; }
+  #page-reports .report-mobile-cards td:not(:first-child)::before {
+    font-size: 11px;
+  }
+  #page-reports .report-mobile-sales td:first-child { font-size: 13px; }
+  /* Total kartu: 15px navy; tombol Refund 44px selebar kolom. */
+  #page-reports .report-mobile-sales td:nth-child(5) strong {
+    font-size: 15px;
+    color: #0B2E6B;
+  }
+  #page-reports .report-mobile-sales td:nth-child(5) .button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+/* --- 10. Paginasi & aksi baris --- */
+#page-reports .report-mobile-pagination button {
+  min-width: 82px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Aksi baris di tabel desktop: 40px. Di kartu HP tombol Refund tetap 44px
+   (aturan seksi 9), jadi aturan 40px ini hanya untuk lebar desktop. */
+@media (min-width: 641px) {
+  #page-reports .report-mobile-sales td .button.small { min-height: 40px; }
+}
+@media (pointer: coarse) {
+  #page-reports .report-mobile-sales td .button.small { min-height: 44px; }
+}
+
+/* --- 11. Detail transaksi (modal struk "Transaksi tersimpan") ---
+   Struk memakai inline style (border dashed) sehingga override butuh
+   !important. Selektor dibedakan: wadah struk pakai "border:1px dashed",
+   garis pemisah di dalamnya pakai "border-top:1px dashed". */
+.modal-backdrop .modal { border-radius: 16px; }
+.modal-body > div[style*="border:1px dashed"] {
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 16px;
+  padding: 20px 18px !important;
+}
+.modal-body div[style*="border-top:1px dashed"] {
+  border-top: 1px solid #E2E8F0 !important;
+}
+.modal:has(.modal-body > div[style*="border:1px dashed"]) .modal-foot .button {
+  min-height: 52px;
+}

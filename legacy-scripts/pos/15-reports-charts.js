@@ -47,13 +47,19 @@ function setReportTableRows(tbodyId,rows,emptyHtml,renderRow){reportTableRows.se
 const reportSalesBody=$('salesBody');
 reportSalesBody.addEventListener('click',event=>{
   const button=event.target.closest?.('[data-settle-sale],[data-void-sale],[data-refund-sale],[data-receivable-sale]');
-  if(!button)return;
-  const sale=state.sales.find(item=>item.id===(button.dataset.settleSale||button.dataset.voidSale||button.dataset.refundSale||button.dataset.receivableSale));
-  if(!sale)return;
-  if(button.dataset.settleSale)settleSale(sale);
-  else if(button.dataset.voidSale)voidSale(sale);
-  else if(button.dataset.refundSale)refundSale(sale);
-  else receiveReceivable(sale);
+  if(button){
+    const sale=state.sales.find(item=>item.id===(button.dataset.settleSale||button.dataset.voidSale||button.dataset.refundSale||button.dataset.receivableSale));
+    if(!sale)return;
+    if(button.dataset.settleSale)settleSale(sale);
+    else if(button.dataset.voidSale)voidSale(sale);
+    else if(button.dataset.refundSale)refundSale(sale);
+    else receiveReceivable(sale);
+    return;
+  }
+  const row=event.target.closest?.('tr[data-sale-id]');
+  if(!row)return;
+  const sale=state.sales.find(item=>item.id===row.dataset.saleId);
+  if(sale){receiptModal(sale);polishReceiptDetailLabels(sale);}
 });
 function renderReportCharts(sales,monthValue){
   $('salesTrendChart').innerHTML=reportChartSvg(buildSalesTrend(sales,monthValue),{money:true,color:'#2563EB',label:'Trend penjualan bulanan'});
@@ -106,9 +112,10 @@ function renderReportData(){
   $('reportItems').textContent=fmt.format(itemCount);
   $('reportProfit').textContent=rupiah(profit);
   all.reverse();
+  const reportFilteredAll=reportTrxQuery?all.filter(sale=>saleMatchesReportQuery(sale,reportTrxQuery)):all;
   const canManage=hasRole('Admin');
-  const renderTransaction=s=>`<tr><td>${new Date(s.at).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}<div class="hint" title="${esc(s.number)}">${esc(formatSaleNumber(s.number))}</div></td><td>${esc(s.cashier||'—')}</td><td>${esc([...new Set((s.payments||[]).map(p=>p.method))].join(' + ')||'—')}</td><td><span class="status ${s.status==='Lunas'?'':s.status==='Gagal'||s.status==='Void'||s.status==='Dikembalikan'?'danger':'pending'}">${esc(s.status)}</span></td><td class="numeric"><strong>${rupiah(s.total)}</strong> ${canManage&&s.status==='Menunggu'?`<button class="button small" data-settle-sale="${esc(s.id)}">Tandai lunas</button>`:''} ${canManage&&['Menunggu','Gagal'].includes(s.status)?`<button class="button small danger" data-void-sale="${esc(s.id)}">Void</button>`:''} ${canManage&&s.status==='Piutang'?`<button class="button small primary" data-receivable-sale="${esc(s.id)}">Terima piutang</button>`:''} ${canManage&&['Lunas','Piutang'].includes(s.status)?`<button class="button small danger" data-refund-sale="${esc(s.id)}">Refund</button>`:''}</td></tr>`;
-  setReportTableRows('salesBody',all,'<tr><td colspan="5" class="empty-row">Belum ada transaksi pada periode ini.</td></tr>',renderTransaction);
+  const renderTransaction=s=>`<tr class="sale-row" data-sale-id="${esc(s.id)}" style="cursor:pointer"><td>${new Date(s.at).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}<div class="hint" title="${esc(s.number)}">${esc(formatSaleNumber(s.number))}</div></td><td>${esc(s.cashier||'—')}</td><td>${esc([...new Set((s.payments||[]).map(p=>p.method))].join(' + ')||'—')}</td><td><span class="status ${s.status==='Lunas'?'':s.status==='Gagal'||s.status==='Void'||s.status==='Dikembalikan'?'danger':'pending'}">${esc(s.status)}</span></td><td class="numeric"><strong>${rupiah(s.total)}</strong> ${canManage&&s.status==='Menunggu'?`<button class="button small" data-settle-sale="${esc(s.id)}">Tandai lunas</button>`:''} ${canManage&&['Menunggu','Gagal'].includes(s.status)?`<button class="button small danger" data-void-sale="${esc(s.id)}">Void</button>`:''} ${canManage&&s.status==='Piutang'?`<button class="button small primary" data-receivable-sale="${esc(s.id)}">Terima piutang</button>`:''} ${canManage&&['Lunas','Piutang'].includes(s.status)?`<button class="button small danger" data-refund-sale="${esc(s.id)}">Refund</button>`:''}</td></tr>`;
+  setReportTableRows('salesBody',reportFilteredAll,reportTrxQuery?'<tr><td colspan="5" class="empty-row">Transaksi tidak ditemukan.</td></tr>':'<tr><td colspan="5" class="empty-row">Belum ada transaksi pada periode ini.</td></tr>',renderTransaction);
   const summaries=[['methodSummary',Array.from(methods)],['categorySummary',Array.from(categories)],['cashierSummary',Array.from(cashiers)]];
   summaries.forEach(([id,entries])=>{$(id).innerHTML=entries.sort((a,b)=>b[1]-a[1]).map(([label,value])=>`<div class="detail-row"><span>${esc(label||'Tidak diketahui')}</span><strong>${rupiah(value)}</strong></div>`).join('')||'<div class="empty" style="padding:18px">Belum ada data.</div>'});
   $('topProducts').innerHTML=Array.from(productTotals.values()).sort((a,b)=>b.quantity-a.quantity).slice(0,8).map(product=>`<div class="detail-row"><span>${esc(product.name)}<div class="hint">${fmt.format(product.quantity)} unit terjual</div></span><strong>${rupiah(product.revenue)}</strong></div>`).join('')||'<div class="empty" style="padding:18px">Belum ada item terjual.</div>';
@@ -123,10 +130,10 @@ function renderReportData(){
     const label=new Date(Number(year),Number(monthNumber)-1,Number(dayNumber)).toLocaleDateString('id-ID',{weekday:'short',day:'2-digit',month:'short'});
     return`<li><span class="report-rank-number">${String(index+1).padStart(2,'0')}</span><span class="report-rank-copy"><strong>${esc(label)}</strong><small>${fmt.format(day.transactions)} transaksi</small></span><strong class="report-rank-value">${rupiah(day.total)}</strong></li>`;
   }).join('')||'<li class="report-rank-empty">Belum ada penjualan pada periode ini.</li>';
-  const bestProducts=Array.from(productTotals.values()).sort((a,b)=>b.quantity-a.quantity||b.revenue-a.revenue||a.name.localeCompare(b.name,'id')).slice(0,5);
+  const bestProducts=Array.from(productTotals.values()).sort((a,b)=>b.quantity-a.quantity||b.revenue-a.revenue||a.name.localeCompare(b.name,'id')).slice(0,3);
   $('bestProductsSummary').innerHTML=bestProducts.map((product,index)=>`<li><span class="report-rank-number">${String(index+1).padStart(2,'0')}</span><span class="report-rank-copy"><strong>${esc(product.name)}</strong><small>${fmt.format(product.quantity)} unit terjual</small></span><strong class="report-rank-value">${rupiah(product.revenue)}</strong></li>`).join('')||'<li class="report-rank-empty">Belum ada item terjual.</li>';
   $('bestProductsSummary').closest('.report-summary-block').hidden=bestProducts.length===0;
-  const slowProducts=productTotals.size?rankLeastSellingProducts(state.products,productTotals):[];
+  const slowProducts=productTotals.size?rankLeastSellingProducts(state.products,productTotals,3):[];
   $('slowProductsSummary').innerHTML=slowProducts.map((product,index)=>`<li><span class="report-rank-number">${String(index+1).padStart(2,'0')}</span><span class="report-rank-copy"><strong>${esc(product.name)}</strong><small>${fmt.format(product.quantity)} unit terjual</small></span><strong class="report-rank-value">${rupiah(product.revenue)}</strong></li>`).join('')||'<li class="report-rank-empty">Belum ada data produk.</li>';
   $('slowProductsSummary').closest('.report-summary-block').hidden=slowProducts.length===0;
   updateReportPaginations();
@@ -163,6 +170,111 @@ function updateReportChartLayout(){
 document.querySelectorAll('[data-report-chart]').forEach(button=>button.onclick=()=>{activeReportChart=button.dataset.reportChart;updateReportChartLayout()});
 if(window.ResizeObserver)new ResizeObserver(updateReportChartLayout).observe($('reportChartRegion'));
 else window.addEventListener('resize',updateReportChartLayout);
+/* ==========================================================================
+   GEMINI3 (2026-11-22) — samakan Laporan ke render Gemini
+   (~/workspace/user/files/FastQ_POS_-_Polished_UI__1__0_xch2.html § Laporan
+   baris 362-740; modal Detail Transaksi baris 1208-1236).
+   - Kolom pencarian transaksi (#laporanTrxSearch + tombol clear) di atas
+     tabel; filter live berdasarkan ID transaksi / kasir / metode / produk
+     (juga nomor, status, waktu — sama seperti render).
+   - Teks ke render: tombol "Cetak" (dari "Cetak / PDF"), "Produk terlaris ·
+     3 teratas" / "Produk kurang laris · 3 terbawah" (dari 5), hint "Klik
+     transaksi untuk detail", badge "Top 5" di panel donut (donut tetap 5
+     produk — "5 produk kontribusi tertinggi" seperti render).
+   - Modal detail transaksi (hanya yang dibuka dari baris laporan):
+     judul "Detail Transaksi" + label "Waktu" / "Kasir / Metode" /
+     "Total Bayar". TETAP 3 tombol Share / Print / Selesai (fungsi tidak
+     diubah); modal struk dari kasir tidak kena relabel ini.
+   - "Bulan ini" / "Hari ini" sudah menjadi opsi #reportPeriod — tidak
+     diubah. Forecast "Perkiraan kebutuhan stok (30 hari)" sudah ada dengan
+     data asli — tidak diubah.
+   Hanya file ini yang diubah JS-nya (aturan tugas); file JS lain, HTML,
+   dan index.html tidak disentuh.
+   ========================================================================== */
+let reportTrxQuery='';
+function saleMatchesReportQuery(sale,query){
+  if(!query)return true;
+  const methods=[...new Set((sale.payments||[]).map(payment=>payment.method))].join(' + ');
+  const products=(sale.items||[]).map(item=>item.name||'').join(' ');
+  const haystack=[sale.number,formatSaleNumber(sale.number),sale.id,sale.cashier,methods,sale.status,products,new Date(sale.at).toLocaleString('id-ID')].join(' ').toLowerCase();
+  return haystack.includes(query);
+}
+function polishReceiptDetailLabels(sale){
+  const title=$('modalTitle');
+  if(title)title.textContent='Detail Transaksi';
+  const body=$('modalBody');
+  if(!body)return;
+  const box=body.querySelector(':scope > div');
+  if(!box)return;
+  const dateDiv=[...box.querySelectorAll(':scope > div')].find(div=>div.textContent.trim().startsWith('Tanggal:'));
+  if(dateDiv){
+    const dateValue=dateDiv.textContent.replace(/^Tanggal:\s*/,'').trim();
+    const methods=[...new Set((sale.payments||[]).map(payment=>payment.method))].join(' + ')||'—';
+    dateDiv.className='receipt-detail-meta';
+    dateDiv.textContent='';
+    const timeCell=document.createElement('div');
+    const timeLabel=document.createElement('span');timeLabel.className='receipt-detail-label';timeLabel.textContent='Waktu';
+    const timeValue=document.createElement('span');timeValue.className='receipt-detail-value';timeValue.textContent=dateValue;
+    timeCell.append(timeLabel,timeValue);
+    const metaCell=document.createElement('div');
+    const metaLabel=document.createElement('span');metaLabel.className='receipt-detail-label';metaLabel.textContent='Kasir / Metode';
+    const metaValue=document.createElement('span');metaValue.className='receipt-detail-value';metaValue.textContent=`${sale.cashier||'—'} · ${methods}`;
+    metaCell.append(metaLabel,metaValue);
+    dateDiv.append(timeCell,metaCell);
+  }
+  const totalStrong=[...box.querySelectorAll('strong')].find(strong=>strong.textContent.trim()==='Total');
+  if(totalStrong)totalStrong.textContent='Total Bayar';
+}
+function initReportTrxSearch(){
+  const panel=$('salesBody')?.closest('.panel');
+  if(!panel||$('laporanTrxSearch'))return;
+  const wrap=document.createElement('div');
+  wrap.className='report-trx-search';
+  wrap.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><input class="field" id="laporanTrxSearch" type="text" placeholder="Cari ID transaksi, kasir, metode, atau produk" aria-label="Cari transaksi" autocomplete="off"><button id="laporanTrxSearchClear" type="button" title="Bersihkan pencarian" aria-label="Bersihkan pencarian" hidden>×</button>';
+  const tableWrap=panel.querySelector('.table-wrap');
+  if(tableWrap)tableWrap.before(wrap);else panel.append(wrap);
+  const input=$('laporanTrxSearch'),clear=$('laporanTrxSearchClear');
+  input.addEventListener('input',()=>{
+    reportTrxQuery=input.value.trim().toLowerCase();
+    clear.hidden=!input.value;
+    reportPaginationPages.set('salesBody',0);
+    renderReportData();
+  });
+  input.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&input.value){input.value='';reportTrxQuery='';clear.hidden=true;reportPaginationPages.set('salesBody',0);renderReportData();input.focus();}
+  });
+  clear.addEventListener('click',()=>{
+    input.value='';reportTrxQuery='';clear.hidden=true;
+    reportPaginationPages.set('salesBody',0);
+    renderReportData();
+    input.focus();
+  });
+}
+function initReportGemini3Texts(){
+  const printButton=$('printReports');
+  if(printButton)printButton.textContent='Cetak';
+  document.querySelectorAll('#page-reports .report-summary-block h3').forEach(heading=>{
+    if(heading.textContent.includes('5 teratas'))heading.textContent=heading.textContent.replace('5 teratas','3 teratas');
+    if(heading.textContent.includes('5 terbawah'))heading.textContent=heading.textContent.replace('5 terbawah','3 terbawah');
+  });
+  const trxPanel=$('salesBody')?.closest('.panel');
+  const trxTitle=trxPanel?.querySelector('.panel-title');
+  if(trxTitle&&!trxTitle.querySelector('.report-trx-hint')){
+    const hint=document.createElement('span');
+    hint.className='report-trx-hint';
+    hint.textContent='Klik transaksi untuk detail';
+    trxTitle.append(hint);
+  }
+  const donutTitle=document.querySelector('#topProductsChartPanel .panel-title');
+  if(donutTitle&&!donutTitle.querySelector('.report-top5-badge')){
+    const badge=document.createElement('span');
+    badge.className='report-top5-badge';
+    badge.textContent='Top 5';
+    donutTitle.append(badge);
+  }
+}
+initReportTrxSearch();
+initReportGemini3Texts();
 updateReportChartLayout();
 renderCart();renderShift();
 renderOutlets();

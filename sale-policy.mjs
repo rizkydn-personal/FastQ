@@ -1,5 +1,45 @@
+import { CASHIER_ITEM_DISCOUNT_MAX_PERCENT, CASHIER_TRANSACTION_DISCOUNT_MAX_PERCENT } from './cart-utils.mjs';
+
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = value => typeof value === 'string' && uuidPattern.test(value);
+
+export { CASHIER_ITEM_DISCOUNT_MAX_PERCENT, CASHIER_TRANSACTION_DISCOUNT_MAX_PERCENT };
+
+export function lineDiscountRupiah(item) {
+  const amount = item.price * item.qty;
+  if (item.discount?.kind === 'percent') return Math.round(amount * item.discount.value / 100);
+  if (item.discount?.kind === 'amount') return Math.min(amount, Math.round(item.discount.value || 0));
+  return 0;
+}
+
+function itemDiscountExceedsCashierLimit(item) {
+  if (!item.discount) return false;
+  const lineAmount = item.price * item.qty;
+  if (item.discount.kind === 'percent') return item.discount.value > CASHIER_ITEM_DISCOUNT_MAX_PERCENT;
+  if (item.discount.kind === 'amount') return Math.round(item.discount.value) > Math.round(lineAmount * CASHIER_ITEM_DISCOUNT_MAX_PERCENT / 100);
+  return false;
+}
+
+// Mengembalikan pesan pelanggaran bila transaksi kasir melampaui kewenangan
+// diskonnya, atau null bila masih dalam batas. Dipanggil server-side di
+// applySaleEvent untuk transaksi baru dari Kasir; asumsikan payload sudah lolos
+// validateSalePayload.
+export function cashierDiscountViolation(s) {
+  for (const item of s.items) {
+    if (itemDiscountExceedsCashierLimit(item)) {
+      if (item.discount?.pendingApproval !== true || !isUuid(item.discount.approvalRequestId)) {
+        return 'Diskon item di atas 10% hanya dapat diberikan kasir dengan permintaan persetujuan yang tercatat.';
+      }
+    }
+  }
+  const itemDiscountTotal = Math.min(s.subtotal, Math.round(s.items.reduce((sum, item) => sum + lineDiscountRupiah(item), 0)));
+  const transactionDiscount = Math.max(0, s.discount - itemDiscountTotal);
+  const transactionBase = Math.max(0, s.subtotal - itemDiscountTotal);
+  if (transactionDiscount > Math.round(transactionBase * CASHIER_TRANSACTION_DISCOUNT_MAX_PERCENT / 100)) {
+    return 'Diskon transaksi di atas 10% tidak dapat diberikan kasir; terapkan sebagai diskon item yang dimintakan persetujuan, atau minta Admin.';
+  }
+  return null;
+}
 
 export function validateSalePayload(s) {
   const fail = message => { throw Object.assign(new Error(message), { status: 400 }); };
@@ -8,7 +48,8 @@ export function validateSalePayload(s) {
   for (const field of ['subtotal','discount','tax','service','total']) {
     if (!Number.isSafeInteger(s[field]) || s[field] < 0) fail(`Nilai ${field} harus berupa Rupiah bulat yang valid.`);
   }
-  if (s.discount > s.subtotal || s.total !== s.subtotal - s.discount + s.tax + s.service) fail('Total transaksi tidak sesuai dengan subtotal, diskon, pajak, dan biaya layanan.');
+  if (s.tax !== 0) fail('Nilai tax transaksi harus 0.');
+  if (s.discount > s.subtotal || s.total !== s.subtotal - s.discount + s.tax + s.service) fail('Total transaksi tidak sesuai dengan subtotal, diskon, dan biaya layanan.');
   if (!Array.isArray(s.items) || !s.items.length || s.items.length > 500) fail('Transaksi harus memiliki 1 sampai 500 item.');
   for (const item of s.items) {
     if (!item || typeof item !== 'object' || Array.isArray(item) || !isUuid(item.productId) || (item.variantId != null && !isUuid(item.variantId)) || typeof item.name !== 'string' || !item.name.trim() || item.name.length > 204 || item.sku != null && (typeof item.sku !== 'string' || item.sku.length > 40) || item.note != null && (typeof item.note !== 'string' || item.note.length > 100) || !Number.isFinite(item.qty) || item.qty <= 0 || item.qty > 1_000_000 || Math.abs(item.qty * 1000 - Math.round(item.qty * 1000)) > 1e-6 || !Number.isSafeInteger(item.price) || item.price < 0 || !Number.isSafeInteger(item.cost || 0) || (item.cost || 0) < 0) fail('Item transaksi tidak valid.');

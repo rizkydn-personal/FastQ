@@ -51,6 +51,11 @@ const LOGIN_REQUEST_MAX_KEYS = 10_000;
 const LOGIN_MAX_IDENTITY_REQUESTS = 20;
 const LOGIN_MAX_REMOTE_REQUESTS = 120;
 const DUMMY_LOGIN_SALT = 'fastq-pos-login-dummy-salt-v1';
+// T1: pendaftaran outlet/Pemilik adalah endpoint publik tanpa sesi; batasi
+// per IP agar tidak dapat dibanjiri outlet + akun (spam/DoS penyimpanan).
+// Lebih ketat dari login karena satu pendaftaran membuat satu outlet baru.
+const registerRequestsByRemote = new Map();
+const REGISTER_MAX_REMOTE_REQUESTS = 10;
 
 function consumeLoginRateLimit(map, key, limit, now) {
   let record = map.get(key);
@@ -75,6 +80,11 @@ function consumeLoginRateLimit(map, key, limit, now) {
 if (process.env.DATABASE_URL) {
   const { Pool } = await import('pg');
   pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 12, connectionTimeoutMillis: 15000, idleTimeoutMillis: 30_000, query_timeout: 30000, statement_timeout: 25000, ssl: postgresSslFromEnv() });
+  // Tanpa handler ini, matinya koneksi DB memancarkan 'error' yang tidak
+  // tertangani dan membunuh proses Node (insiden 04:57 WIB 2026-11-22:
+  // pg_hold mati -> koneksi putus -> server crash). Pool membuat koneksi
+  // baru saat dibutuhkan; handler ini hanya mencegah crash.
+  pool.on('error', (error) => console.error('Pool database error (koneksi putus?)', error?.message || error));
   try {
     const readiness = await checkDatabaseReadiness(pool, REQUIRED_SCHEMA_VERSION);
     schemaReady = readiness.ready;
@@ -224,6 +234,17 @@ async function activeSession(req) {
 async function accountRequest(req, res, pathname) {
   if (!pool || sessionSecret.length < 32) return json(res, 503, { error: 'Database dan POS_SESSION_SECRET server harus dikonfigurasi.' });
   const registering = pathname === '/api/auth/register';
+  if (registering && req.method === 'POST') {
+    const forwardedAddress = !isDevelopment
+      ? String(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      : '';
+    const remote = forwardedAddress || req.socket.remoteAddress || 'unknown';
+    const retryAfter = consumeLoginRateLimit(registerRequestsByRemote, remote, REGISTER_MAX_REMOTE_REQUESTS, Date.now());
+    if (retryAfter) {
+      res.setHeader('Retry-After', String(retryAfter));
+      return json(res, 429, { error: 'Terlalu banyak pendaftaran dari alamat ini. Coba lagi beberapa menit.' });
+    }
+  }
   if (req.method !== 'GET') requireSameOrigin(req);
   const actor = registering ? null : await activeSession(req);
   if (req.method === 'GET') return json(res, 200, { user: { id: actor.id, name: actor.name, role: actor.role, outletId: actor.outlet_id } });
@@ -257,7 +278,7 @@ async function accountRequest(req, res, pathname) {
     if (!isUuid(input.id) || typeof input.name !== 'string' || !input.name.trim() || input.name.trim().length > 60 || !['Kasir','Manajer','Admin','Pemilik'].includes(input.role) || !/^[a-f0-9]{32}$/.test(input.pinSalt || '') || !/^[a-f0-9]{64}$/.test(input.pinHash || '')) throw Object.assign(new Error('Data akun tidak valid.'), { status: 400 });
     if (input.role !== 'Kasir' && (!/^[a-f0-9]{32}$/.test(input.passwordSalt || '') || !/^[a-f0-9]{64}$/.test(input.passwordHash || ''))) throw Object.assign(new Error('Password pengelola wajib diisi.'), { status: 400 });
     const duplicate = await client.query('SELECT id FROM users WHERE outlet_id=$1 AND lower(name)=lower($2) AND active=true', [outletId, input.name.trim()]);
-    if (duplicate.rowCount) throw Object.assign(new Error('Nama pengguna sudah terdaftar.'), { status: 409 });
+    if (duplicate.rowCount) throw Object.assign(new Error('Pendaftaran tidak dapat diproses dengan data ini. Periksa kembali data Anda atau masuk bila Anda sudah memiliki akun.'), { status: 409 });
     if (input.twoFactorSecret && (!/^[A-Z2-7]{32}$/.test(input.twoFactorSecret) || !/^[a-f0-9]{64}$/i.test(totpEncryptionKey))) throw Object.assign(new Error('Konfigurasi authenticator tidak valid.'), { status: 400 });
     await client.query('INSERT INTO users(id,outlet_id,name,role,pin_salt,pin_hash,password_salt,password_hash,totp_secret_ciphertext,login_identity) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [input.id,outletId,input.name.trim(),input.role,input.pinSalt,input.pinHash,input.passwordSalt || null,input.passwordHash || null,input.twoFactorSecret ? encryptTotpSecret(input.twoFactorSecret) : null,identity]);
     const outlet = await client.query('SELECT code,name FROM outlets WHERE id=$1', [outletId]);
@@ -265,7 +286,7 @@ async function accountRequest(req, res, pathname) {
     return json(res, 201, { user: { id: input.id, name: input.name.trim(), role: input.role, outletId, outletCode: outlet.rows[0].code, outletName: outlet.rows[0].name } });
   } catch (error) {
     await client.query('ROLLBACK');
-    if (error.code === '23505' && error.constraint === 'users_login_identity_unique') throw Object.assign(new Error('Email atau nomor HP sudah terdaftar. Gunakan akun lain atau masuk.'), { status: 409 });
+    if (error.code === '23505' && error.constraint === 'users_login_identity_unique') throw Object.assign(new Error('Pendaftaran tidak dapat diproses dengan data ini. Periksa kembali data Anda atau masuk bila Anda sudah memiliki akun.'), { status: 409 });
     if (error.code === '2200H') throw Object.assign(new Error('Kode outlet enam angka sudah habis. Hubungi administrator.'), { status: 503 });
     throw error;
   }

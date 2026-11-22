@@ -1,0 +1,200 @@
+/* ==========================================================================
+   polish-gemini2-fonts.css — FastQ "Gemini total": FONT + GRADIENT + BLUR
+   Dibuat 2026-11-22. SATU file baru; tidak menyentuh file lain.
+   Scope: font lokal (Inter + Plus Jakarta Sans, OFFLINE-FIRST, tanpa CDN),
+   gradient + warna token Gemini, header blur. TIDAK mengubah geometri
+   kasir (pitch 65, thumb 46, nama 15px, harga/stok 13px, header 56px,
+   8 baris) dan TIDAK menyentuh logika fungsional apa pun.
+
+   FONT — 7 file woff2 di assets/fonts/ (latin, valid wOF2):
+     inter-400/500/600/700 + plus-jakarta-sans-600/700/800.
+   Path src RELATIF ../assets/fonts/... : benar dari CSS yang disajikan
+   di / maupun /legacy/ (CSS di root, font di assets/fonts/).
+
+   CATATAN WIRING (bukan bagian file ini): server live menyajikan file
+   dari dist/ dan pola /assets/ saat ini hanya mengizinkan SATU segmen
+   nama file — /assets/fonts/*.woff2 mengembalikan 404 sampai font
+   disalin ke dist/ dan pola static diizinkan. Sampai wiring itu
+   dikerjakan, @font-face di bawah tetap dideklarasikan dengan benar
+   (font-display: swap) dan browser fallback ke system stack Inter.
+   ========================================================================== */
+
+/* --- 1. @font-face: Inter 400/500/600/700 ------------------------------- */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(../assets/fonts/inter-400.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(../assets/fonts/inter-500.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(../assets/fonts/inter-600.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../assets/fonts/inter-700.woff2) format('woff2');
+}
+
+/* --- 1b. @font-face: Plus Jakarta Sans 600/700/800 ---------------------- */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(../assets/fonts/plus-jakarta-sans-600.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../assets/fonts/plus-jakarta-sans-700.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(../assets/fonts/plus-jakarta-sans-800.woff2) format('woff2');
+}
+
+/* --- 2. Font dasar: Inter; judul/display: Plus Jakarta Sans ------------ */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #F6F8FC;
+  color: #0F2544;
+}
+/* Halaman shell/landing/dashboard/frame POS memakai font yang sama
+   (aturan class di polish-*.css lain menargetkan elemen ini langsung,
+   jadi ditegaskan di sini agar menang saat file ini dimuat terakhir). */
+.shell,
+.marketing-page,
+.dashboard-page,
+.status,
+.mobile-checkout,
+body:has(#page-pos.active) .modal-backdrop {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+h1, h2, h3,
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+  color: #0F2544;
+}
+
+/* --- 2b. Harga/total/nominal: angka tabular ---------------------------- */
+.price,
+.total,
+.amount,
+.numeric,
+.summary-total strong,
+.summary-row strong,
+#subtotal,
+#total,
+#payTotal,
+#discountValue,
+.cart-summary strong,
+.metric-grid article strong,
+.report-grid article strong,
+.breakdown-row strong,
+.table-scroll .numeric,
+.trend-column,
+[class*="price"],
+[class*="total"],
+[class*="amount"],
+[class*="nominal"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 3. GRADIENT + WARNA (nilai kontrak bersama) ------------------------ */
+/* Judul/teks utama navy; background halaman #F6F8FC (tanpa ubah geometri). */
+h1, h2, h3 { color: #0F2544; }
+html { background-color: #F6F8FC; }
+/* Latar kasir: menangkan atas body:has(#page-pos.active) #F6F7FB di
+   polish-gemini-kasir.css (spesifisitas sama, file ini dimuat terakhir).
+   Hanya warna — geometri kasir tidak berubah. */
+body:has(#page-pos.active),
+.shell:has(#page-pos.active),
+.shell:has(#page-pos.active) > main {
+  background-color: #F6F8FC;
+}
+
+/* Logo/brand-mark: gradient 135deg; glyph putih fastq-cart.png tetap di
+   atasnya (layer pertama). background-size berlapis: glyph 78% auto,
+   gradient cover. background-color fallback #1447E6. */
+.topbar .brand-mark {
+  background-color: #1447E6;
+  background-image: url("/fastq-cart.png"), linear-gradient(135deg, #1447E6, #1E40AF);
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, center;
+  background-size: 78% auto, cover;
+}
+
+/* Tombol primer (Bayar, Simpan, aksi utama): gradient 90deg, teks putih,
+   hover lebih gelap. Tinggi/radius TIDAK diubah di sini. !important hanya
+   pada warna/background: file ini lapisan akhir "Gemini total" dan harus
+   menang atas aturan primer solid (#page-pos .button.primary dsb.) di
+   polish-gemini-*.css lain — tanpa menyentuh geometri/fungsi. */
+#page-pos #payButton,
+.mobile-pay-button,
+.button.primary,
+.primary-action,
+button.primary,
+.dash-login form button[type="submit"],
+.marketing-page .marketing-actions .primary-action {
+  background: linear-gradient(90deg, #1447E6, #1D4ED8) !important;
+  border-color: #1D4ED8 !important;
+  color: #FFFFFF !important;
+}
+#page-pos #payButton:hover,
+.mobile-pay-button:hover,
+.button.primary:hover,
+.primary-action:hover,
+button.primary:hover,
+.dash-login form button[type="submit"]:hover,
+.marketing-page .marketing-actions .primary-action:hover {
+  background: linear-gradient(90deg, #1E40AF, #1E3A8A) !important;
+  border-color: #1E40AF !important;
+  color: #FFFFFF !important;
+}
+/* Disabled tetap abu-abu (konvensi polish-gemini-kasir.css). */
+#page-pos #payButton:disabled,
+.mobile-pay-button:disabled,
+.button.primary:disabled,
+.primary-action:disabled,
+button.primary:disabled {
+  background: #94A3B8 !important;
+  border-color: #94A3B8 !important;
+  box-shadow: none;
+}
+
+/* Kartu .card-surface: putih, border, shadow token Gemini. */
+.card-surface {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+}
+
+/* --- 4. HEADER BLUR ala prototipe Gemini -------------------------------- */
+.topbar,
+.marketing-page .marketing-nav,
+.dashboard-page .dash-header {
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}

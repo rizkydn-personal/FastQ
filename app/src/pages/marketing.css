@@ -1,6 +1,6 @@
 .marketing-page { min-height: 100%; overflow: hidden; background: var(--gray-50); color: var(--blue-900); }
 .marketing-nav { height: 76px; max-width: 1180px; margin: auto; padding: 0 24px; display:flex; align-items:center; justify-content:space-between; }
-.marketing-brand { display:flex; align-items:center; gap:10px; color:var(--blue-900); text-decoration:none; font-size:20px; }
+.marketing-brand { display:flex; align-items:center; gap:10px; min-height:44px; color:var(--blue-900); text-decoration:none; font-size:20px; }
 .marketing-brand img { width:42px; height:42px; object-fit:contain; }
 .marketing-login,.secondary-action { min-height:48px; display:inline-flex; align-items:center; justify-content:center; padding:0 18px; border:1px solid var(--gray-300); border-radius:10px; color:var(--blue-900); background:#fff; font-weight:650; text-decoration:none; }
 .marketing-hero { max-width:1180px; min-height:520px; margin:auto; padding:65px 24px 74px; display:grid; grid-template-columns:1.1fr .9fr; gap:44px; align-items:center; }
@@ -25,7 +25,20 @@
 .marketing-features p { margin:0; color:var(--gray-700); line-height:1.6; }
 .marketing-footer { padding:22px 24px; border-top:1px solid var(--gray-300); color:var(--gray-700); text-align:center; font-size:14px; }
 .marketing-login,.secondary-action { border-radius: 10px; }
-@media(max-width:760px) { .marketing-nav{height:64px;padding:0 16px}.marketing-hero{min-height:0;padding:50px 20px 34px;grid-template-columns:1fr;gap:18px}.marketing-copy h1{font-size:42px}.marketing-copy>p{font-size:16px}.marketing-visual{min-height:190px;grid-row:1}.marketing-visual img{width:min(56vw,220px)}.marketing-features{grid-template-columns:1fr;padding:10px 20px 34px;gap:10px}.marketing-features article{padding:17px}.marketing-login{min-height:44px}.dash-login{margin:7vh auto;padding:20px}.dash-title h1,.dash-login h1{font-size:24px}.metric-grid article strong{font-size:24px}.table-scroll th,.table-scroll td{padding:10px 8px}}
+@media(max-width:760px) { .marketing-nav{height:64px;padding:0 16px}.marketing-hero{min-height:0;padding:40px 20px 34px;grid-template-columns:1fr;gap:18px}.marketing-copy h1{font-size:42px}.marketing-copy>p{font-size:16px}.marketing-copy{grid-row:1}.marketing-visual{grid-row:2;min-height:0;padding:16px 0 4px}.marketing-visual img{width:min(42vw,160px)}.marketing-features{grid-template-columns:1fr;padding:10px 20px 34px;gap:12px}.marketing-features article{padding:17px}.marketing-login{min-height:48px}.dash-login{margin:7vh auto;padding:20px}.dash-title h1,.dash-login h1{font-size:24px}.metric-grid article strong{font-size:24px}.table-scroll th,.table-scroll td{padding:10px 8px}}
+@media(max-width:480px) {
+  /* ui-ux-pro-max: thumb-first on small phones — CTAs full-width, tighter hero */
+  .marketing-copy h1{font-size:36px}
+  .eyebrow{letter-spacing:.08em}
+  .marketing-hero{padding:32px 16px 28px;gap:14px}
+  /* logo tetap DI BAWAH teks (grid-row:2 dari aturan ≤760px), lebih kecil & tenang */
+  .marketing-visual{min-height:0;padding:12px 0 0}
+  .marketing-visual img{width:min(38vw,136px)}
+  .marketing-actions{flex-direction:column}
+  .marketing-actions .primary-action,.marketing-actions .secondary-action{flex:1 1 auto;width:100%;min-height:52px}
+  .marketing-features{padding:8px 16px 28px}
+  .marketing-nav{padding:0 16px}
+}
 
 .offline-badge { display:inline; margin-right:6px; padding:0; border-radius:0; background:transparent; color:var(--blue-900); font-size:12px; font-weight:750; }
 .marketing-features article { box-shadow:0 1px 2px rgba(11,46,107,.05); }

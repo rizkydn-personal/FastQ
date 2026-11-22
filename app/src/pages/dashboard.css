@@ -38,8 +38,64 @@
 .primary-action { min-height: 48px; border: 0; border-radius: 10px; background: var(--blue-600); color: var(--white); font: inherit; font-weight: 700; }
 .error-text { color: var(--red-600); }
 @media (max-width: 700px) { .dash-content { padding: 20px 12px; } .dash-header { padding: 0 14px; } .dash-title { align-items: flex-start; flex-wrap: wrap; } .metric-grid, .report-grid { grid-template-columns: 1fr; } .dash-filters { flex-wrap: wrap; } }
+@media (max-width: 820px) {
+  /* audit: 701-768px masih 3 kolom, angka rupiah 28px bisa meluber */
+  .metric-grid, .report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-grid article strong, .report-grid article strong { overflow-wrap: anywhere; }
+  .dash-filters { flex-wrap: wrap; }
+  .dash-header { flex-wrap: wrap; row-gap: 8px; }
+}
 .dash-login input,.dash-login select,.primary-action,.logout-action,.dash-title>button { border-radius: 10px; }
 
-.sale-badge { display:inline-flex; align-items:center; min-height:26px; padding:3px 9px; border-radius:999px; background:#DCFCE7; color:#166534; font-size:12px; font-weight:700; }
-.sale-badge[data-status*="menunggu"],.sale-badge[data-status*="pending"],.sale-badge[data-status*="piutang"] { background:#FEF3C7; color:#92400E; }
-.sale-badge[data-status*="void"],.sale-badge[data-status*="gagal"],.sale-badge[data-status*="batal"] { background:#FDECEA; color:#B42318; }
+.sale-status { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:#334155; white-space:nowrap; }
+.sale-status i { width:8px; height:8px; flex:none; border-radius:50%; background:#16A34A; }
+.sale-status[data-status*="menunggu"] i,.sale-status[data-status*="pending"] i,.sale-status[data-status*="piutang"] i { background:#D97706; }
+.sale-status[data-status*="void"] i,.sale-status[data-status*="gagal"] i,.sale-status[data-status*="batal"] i { background:#DC2626; }
+
+/* ==========================================================================
+   Polish dashboard pemilik — ui-ux-pro-max (2026-11-21, ronde 2)
+   Aturan: tanpa horizontal scroll, teks body >= 12px, target sentuh >= 44px,
+   ritme spacing 8px, angka rupiah tidak boleh meluber dari kartunya.
+   Blok ini di akhir file agar menang atas aturan legacy di atas.
+   ========================================================================== */
+
+/* --- Angka rupiah: aman meluber di semua lebar --- */
+.metric-grid article strong, .report-grid article strong { overflow-wrap: anywhere; }
+.breakdown-row strong { white-space: normal; text-align: right; overflow-wrap: anywhere; }
+.breakdown-row span { min-width: 0; }
+
+/* --- Header: tombol Keluar & logo tidak boleh terjepit --- */
+.dash-header .brand-mark { flex-shrink: 0; }
+.dash-header > div { min-width: 0; }
+.logout-action { flex-shrink: 0; }
+
+/* --- Tabel: baris bisa dipindai mata, badge tetap terbaca --- */
+.table-scroll tbody tr:hover { background: var(--gray-50); }
+.table-scroll { scrollbar-width: thin; }
+
+/* --- Grafik tren: label tanggal 14px di kolom 22px saling menimpa --- */
+.trend-column span { font-size: 11px; white-space: nowrap; text-align: center; }
+
+/* --- Grid 701-1024px: 2 kolom (3 kolom baru aman di >=1025px) --- */
+@media (max-width: 1024px) {
+  .metric-grid, .report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-filters { flex-wrap: wrap; }
+  .dash-filters label { flex: 1 1 200px; min-width: 0; }
+  .dash-filters select { width: 100%; min-width: 0; }
+}
+
+/* --- <=700px: 1 kolom (ditaruh PALING akhir: blok <=820px sebelumnya
+       menimpa aturan 1 kolom ini — itu bug yang bikin kartu 139px di HP) --- */
+@media (max-width: 700px) {
+  .metric-grid, .report-grid { grid-template-columns: minmax(0, 1fr); }
+  .dash-filters label { flex: 1 1 100%; }
+  .dash-title h1 { font-size: 24px; }
+  .dash-content { padding: 20px 16px; }
+  /* kolom Waktu boleh wrap 2 baris supaya tabel lebih sempit di HP */
+  .table-scroll td:first-child { white-space: normal; line-height: 1.4; }
+  .table-scroll th, .table-scroll td { padding: 10px 8px; }
+}
+@media (max-width: 480px) {
+  .dash-header { padding: 0 16px; gap: 10px; }
+  .dash-header span { font-size: 13px; }
+}

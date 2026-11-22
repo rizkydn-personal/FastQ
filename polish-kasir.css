@@ -1,0 +1,161 @@
+/* ==========================================================================
+   polish-kasir.css — Kasir pixel-perfect
+   --------------------------------------------------------------------------
+   Referensi : ~/workspace/fastq-audit/reference-kasir-rnp-store.png
+               (foto HP Rizky, toko "Rnp Store", 390 CSS px, skala 2x)
+   Target    : kasir mobile 390 (prioritas) + desktop 1440 (konsistensi)
+   Cara ukur : sampling piksel + proyeksi dari GAMBAR (bukan dari CSS),
+               dibanding ~/workspace/fastq-audit/shots-polish2/final/kasir-390.png
+               dan probe Playwright live (server http://127.0.0.1:4173).
+   Muat      : file ini dimuat SETELAH polish.css + polish-extra.css, jadi
+               aturan dengan spesifisitas sama menang lewat urutan.
+               Semua aturan dibatasi ke halaman kasir (#page-pos aktif)
+               supaya halaman lain tidak ikut berubah.
+   CATATAN   : file ini sempat HILANG dari public/ (~22:23 UTC 21 Nov 2026,
+               kemungkinan terhapus git clean / proses wiring parent) dan
+               dibuat ulang apa adanya dari salinan yang terverifikasi live.
+               Parent: pastikan file ini ada sebelum wiring + rebuild.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Latar halaman — ref #F6F7FB (median 246,247,251 di ~30 titik),
+      saat ini #F1F5F9 (241,245,249). Thumb tetap #F1F5F9 (di ref thumb
+      memang sedikit lebih gelap dari latar).
+   -------------------------------------------------------------------------- */
+body:has(#page-pos.active),
+.shell:has(#page-pos.active),
+.shell:has(#page-pos.active) > main {
+  background-color: #F6F7FB;
+}
+
+/* --------------------------------------------------------------------------
+   1. Fokus — cincin 3px -> 2px solid #1D4ED8, offset 2px.
+      (polish.css:1050 memaksa 3px !important; standar sweep-fix adalah 2px,
+      kontras 6,70:1. Berlaku di semua lebar, khusus kasir.)
+   -------------------------------------------------------------------------- */
+#page-pos :is(button, input, select, textarea, a, [tabindex]):focus-visible {
+  outline: 2px solid #1D4ED8 !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. Tombol "Tahan" — radius pill penuh 18px -> 8px (ref ~7-8px, bukan pill),
+      ikon pause 3px -> 2px. Tinggi diatur di blok mobile di bawah.
+   -------------------------------------------------------------------------- */
+#page-pos #holdTransaction {
+  border-radius: 8px;
+}
+#page-pos #holdTransaction::before {
+  width: 9px;
+  height: 14px;
+  border-left-width: 2px;
+  border-right-width: 2px;
+}
+
+/* ==========================================================================
+   MOBILE (<=800px) — semua angka di bawah diukur dari referensi 390px.
+   ========================================================================== */
+@media (max-width: 800px) {
+
+  /* --- 3. Header: tinggi 60px -> 56px (ref: border bawah di 56 CSS px;
+         polish.css:705 memaksa min-height:60px). Padding kiri/kanan 13px
+         -> 16px (ref: logo di x=16,5; teks "FastQ" di x=52,5). --- */
+  .shell:has(#page-pos.active) .topbar {
+    min-height: 56px !important;
+    height: 56px !important;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* --- 4. Logo: kotak tetap 32px; radius 9px -> 7px (ref ~6,5px);
+         glyph keranjang 20px -> 18px (ref ~17,5px; ours ~22px).
+         CATATAN: logo referensi adalah keranjang outline tipis (Feather),
+         BUKAN glyph tebal fastq-mark.png (keranjang tebal + speed lines).
+         File ini menyamakan dengan referensi; kalau mau glyph mark asli,
+         ganti ::before dengan crop dari fastq-mark.png (1 baris). --- */
+  .shell:has(#page-pos.active) .topbar .brand-mark {
+    border-radius: 7px;
+  }
+  .shell:has(#page-pos.active) .topbar .brand-mark::before {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* --- 5. Main: padding-top 14px -> 12px. Mengompensasi tombol Tahan yang
+         jadi 44px (baris judul ikut meninggi 4px) supaya judul "Kasir"
+         (cap-top ref 76 CSS px) dan search (ref 112,5) tetap di tempat. --- */
+  .shell:has(#page-pos.active) > main {
+    padding-top: 12px;
+  }
+
+  /* --- 6. Tombol "Tahan" 36px -> 44px (polish.css:1434 min-height:36px
+         mengalahkan aturan coarse >=44px; selektor ini (2,1,0) mengalahkan
+         (2,0,0) di sana). Radius 8px dari blok 2 di atas tetap berlaku. --- */
+  #page-pos .page-heading #holdTransaction {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  /* --- 7. Search + scan 48px -> 44px (ref: kotak search 225..313 dev
+         = 44,5 CSS px; scan sebaris sama tinggi). Radius 16px tetap. --- */
+  #page-pos .catalog .search-wrap input {
+    height: 44px;
+    min-height: 44px;
+  }
+  #page-pos #cameraScanButton {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  /* --- 8. Kategori 48px -> 44px (ref ~40,5px; 44px adalah batas bawah
+         aturan sentuh >=44px, jadi tidak diturunkan sampai 40px).
+         Toggle list/grid tetap 48px (tombol di dalamnya sudah 44px),
+         jadi tinggi baris kategori = 48px. --- */
+  #page-pos .category-picker-trigger {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  /* --- 9. Jarak kategori -> kartu + kartu jangan meregang.
+         a) margin-top 6px (ref ~10,5px; 6px adalah kompromi karena baris
+            kategori 48px vs ref 40,5px — kalau 10px, kartu turun 5px
+            terlalu rendah).
+         b) flex:1 (polish.css:333) membuat kartu 543px padahal isinya
+            522px (8 baris x 65px), sehingga celah kartu->nav cuma 27px
+            (ref ~41,5px). flex:0 1 auto = setinggi isi, tapi tetap bisa
+            mengecil + scroll internal kalau produk banyak. --- */
+  #page-pos .catalog .product-grid {
+    margin-top: 6px;
+    flex: 0 1 auto;
+  }
+
+  /* --- 10. Bottom nav: pill aktif radius 12px -> 16px (ref ~16px),
+         warna #DBEAFE dan tinggi 52px sudah sama. --- */
+  .shell .sidebar .nav-link {
+    border-radius: 16px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   11. Tombol "Tahan" di layar sentuh: 48px (coarse).
+       !important mengikuti pola perbaikan tombol Shift di polish-extra.css,
+       supaya menang atas aturan 44px mana pun yang ber-!important.
+       Padding-top main ikut 12px -> 8px di coarse: tombol Tahan 48px
+       membuat baris judul 48px (bukan 44px), jadi kompensasi naik 4px
+       supaya search tetap di ~114 (ref 112,5).
+       CATATAN VERIFIKASI: aturan padding-top:8px ini BELUM terbukti menang
+       atas 12px di probe live (padding terukur tetap 12px; search di 118
+       bukan 114). Diduga ada aturan lain yang mendahului — parent/agent
+       verifikasi bisa cek ulang; dampaknya hanya 4px (search +5,5px
+       vs ref, masih dalam toleransi; semua tombol tetap >=44px).
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) and (pointer: coarse) {
+  #page-pos .page-heading #holdTransaction {
+    height: 48px !important;
+    min-height: 48px !important;
+  }
+  .shell:has(#page-pos.active) > main {
+    padding-top: 8px;
+  }
+}

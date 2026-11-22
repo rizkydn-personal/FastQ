@@ -112,7 +112,23 @@ export function createSyncHandler({ pool, activeSession, json, readJson, require
           [body.deviceId, event.id],
         );
         if (!existing.rowCount || !matchesStoredSyncEvent(existing.rows[0], event)) {
-          throw Object.assign(new Error('ID event sudah pernah dipakai untuk perubahan yang berbeda.'), { status: 409, code: 'SYNC_EVENT_ID_CONFLICT' });
+          throw Object.assign(new Error('ID event sudah pernah dipakai untuk perubahan yang berbeda.'), {
+            status: 409,
+            code: 'SYNC_EVENT_ID_CONFLICT',
+            conflict: {
+              type: 'sync-event-id',
+              eventId: event.id,
+              eventType: existing.rows[0]?.event_type || event.type,
+              outletId: existing.rows[0]?.outlet_id || event.outletId || null,
+              occurredAt: existing.rows[0]?.occurred_at || null,
+              storedEvent: existing.rowCount ? {
+                event_type: existing.rows[0].event_type,
+                outlet_id: existing.rows[0].outlet_id,
+                occurred_at: existing.rows[0].occurred_at,
+                payload: existing.rows[0].payload,
+              } : null,
+            },
+          });
         }
         accepted.push(event.id);
         continue;

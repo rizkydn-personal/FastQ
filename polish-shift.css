@@ -1,0 +1,223 @@
+/* ==========================================================================
+   FastQ polish-shift.css — Shift & kas + Absensi.
+   Dibuat ulang dari nol (pemulihan insiden 05:23 WIB — file asli hilang).
+   Rekonstruksi setara file hilang, dari laporan agen sebelumnya +
+   probe terverifikasi live (baseline_results.json 21:59 WIB,
+   verify_results2.json 22:16 WIB, 21 Nov 2026).
+
+   Dimuat SETELAH polish.css + polish-extra.css, jadi aturan di sini
+   menang. Aturan kritis memakai prefix `body` agar menang atas
+   !important di polish.css / polish-extra.css tanpa tergantung urutan
+   muat.
+
+   Arah desain (mengikat, 2026-11-22): ringkas, nyaman, bersih, enak
+   dilihat, responsive. Palet terkendali: biru primer #1D4ED8 + navy
+   #0B2A5B + netral; merah #D92D20 hanya untuk aksi bahaya / kas keluar
+   negatif. Tanpa border/divider dotted, tanpa ornamen ceklis, tanpa
+   badge/pill redundan, tanpa dekorasi tempelan.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Judul halaman: samakan kasir — 36px / 800 / navy #0B2A5B.
+   Baseline: 24px/600 (390px), 28px/600 (1440px), warna #0B2E6B.
+   -------------------------------------------------------------------------- */
+#page-shift .page-heading h1,
+#page-attendance .page-heading h1 {
+  font-size: 36px;
+  font-weight: 800;
+  color: #0b2a5b;
+  letter-spacing: -0.4px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Panel: radius 12px -> 20px, samakan kasir.
+   -------------------------------------------------------------------------- */
+body #page-shift .section-split > .panel,
+body #page-shift .section-split > .panel:first-child,
+body #page-shift .section-split > #discountApprovalPanel,
+#page-attendance .attendance-cards > .panel {
+  border-radius: 20px;
+}
+
+/* Banner shift: radius samakan panel. */
+body #page-shift .shift-banner,
+body #page-shift .shift-banner-active {
+  border-radius: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   3. Tombol di kedua halaman: radius 12px, tinggi 48px (standar sentuh).
+   Baseline: radius 8-10px, tinggi 44px (Absen/Ekspor di 1440px).
+   -------------------------------------------------------------------------- */
+#page-shift .button,
+#page-attendance .button {
+  min-height: 48px;
+  border-radius: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   4. Tombol kas: 48px, font 14px, radius 12px.
+   Baseline 390px: 105px lebar, font 13px, radius 10px (polish-extra.css
+   !important) — tombol terjepit karena toolbar max-width:184px
+   (polish.css:624) + font 12px/tinggi 32-34px (polish.css blok <=800px).
+   Baseline 1440px: 105px, font 13px.
+   Target terverifikasi: HP 164px (dua kolom sama lebar), desktop
+   ~111px, font 14px, tinggi 48px, radius 12px.
+   Warna dipertahankan dari polish-extra.css: "masuk" = aksi primer
+   biru, "keluar" = putih netral (ditulis ulang di sini agar file ini
+   berdiri sendiri bila polish-extra.css tidak termuat).
+   -------------------------------------------------------------------------- */
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash] {
+  min-width: 0;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 12px !important;
+  font-size: 14px !important;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 12px !important;
+  white-space: nowrap;
+}
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="in"] {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="out"] {
+  background: #ffffff !important;
+  border-color: #d9e0ec !important;
+  color: #34415a !important;
+}
+
+/* Toolbar kas di HP (<=800px): grid 2 kolom sama lebar, bukan flex
+   terjepit 184px. (335px konten - gap 8px) / 2 = ~164px per tombol. */
+@media (max-width: 800px) {
+  body #page-shift .section-split > .panel:first-child .toolbar {
+    display: grid !important;
+    /* !important wajib: polish.css memakai
+       grid-template-columns:none!important di blok <=800px. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px;
+    width: 100%;
+    max-width: none !important;
+    margin: 0;
+    padding: 0;
+  }
+  body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash] {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Shift dibersihkan dari tombol pill + kubus tempelan.
+   - Tutup shift: pill 52px/radius 28px (polish.css) -> tombol standar
+     48px, radius 12px, putih + teks navy + border netral.
+     (polish-extra.css sudah 44px/radius 10px !important; di sini
+     disamakan ke hasil ukur akhir 48px/radius 12px.)
+   - Kartu approval diskon: hapus ikon kubus tempelan (data-URI) +
+     ruang kosong 42px-nya; teks kembali ke navy standar / muted.
+   -------------------------------------------------------------------------- */
+body #page-shift #closeShift {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 16px !important;
+  border: 1px solid #d9e0ec !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #0b2e6b !important;
+  font-size: 14px !important;
+  font-weight: 600;
+}
+#page-shift .discount-approval-card-heading::before {
+  display: none;
+}
+#page-shift .discount-approval-card-heading,
+#page-shift .discount-approval-card-details {
+  padding-left: 0;
+}
+#page-shift .discount-approval-time {
+  color: #667085;
+}
+#page-shift .discount-approval-product {
+  font-size: 14px;
+}
+
+/* Banner aktif: konten lega di HP (padding 10px 12px -> 16px) supaya
+   tombol Tutup shift sejajar dengan isi panel (hasil ukur: 331px). */
+@media (max-width: 800px) {
+  #page-shift .shift-banner-content {
+    padding: 16px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Input tanggal shift: kini input TEKS dd/mm/yyyy (perbaikan JS di
+   06-shift-roles.js, jangan sentuh) — tampilannya dirapikan: font 16px
+   (anti iOS auto-zoom), tinggi 48px, radius 12px, placeholder
+   "dd/mm/yyyy" terlihat.
+   Baseline 390px: lebar 280px (filter max-width:280px, polish.css:274),
+   radius 8px. Target: lebar penuh 335px di HP, tetap 280px di desktop.
+   -------------------------------------------------------------------------- */
+#shiftHistoryDate {
+  width: 100%;
+  min-height: 48px;
+  height: 48px;
+  font-size: 16px;
+  border-radius: 12px;
+}
+#shiftHistoryDate::placeholder {
+  color: #667085;
+}
+@media (max-width: 800px) {
+  #page-shift .shift-history-filter {
+    max-width: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. Kartu mobile kas + riwayat shift (<=800px): radius 16px,
+   padding 12px. Baseline: radius 10px, padding 9px (polish.css:633).
+   Label kecil (12px, muted) + nilai jelas sudah diatur polish.css
+   (.shift-history-card .inventory-mobile-summary).
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) {
+  body #page-shift .cash-mobile-item,
+  body #page-shift .shift-history-card {
+    border-radius: 16px;
+    padding: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8. Absensi.
+   - Ekspor CSV di HP: full-width 365px (baseline 179px — terjepit
+     grid 2 kolom .heading-actions, polish.css:76). Satu tombol =
+     satu kolom.
+   - Tombol Absen masuk / Absen pulang: 48px, radius 12px
+     (baseline 1440px: 44px, radius 8px).
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) {
+  #page-attendance .heading-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #page-attendance .heading-actions .button {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Tabel jadi kartu di HP (<=640px): Absen, Riwayat transfer,
+   Pengguna — kartu radius 16px, padding 12px, label kecil (11px,
+   uppercase, muted) + nilai jelas (13px).
+   Layout kartu (display:grid, label via ::before) sudah ada di
+   polish-extra.css (radius 12px); di sini radius disamakan ke 16px
+   mengikuti kartu mobile kas/riwayat di atas.
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  body #page-attendance .attendance-history tbody tr,
+  body #page-outlets .table-wrap tbody tr,
+  body #page-users .table-wrap tbody tr {
+    border-radius: 16px;
+    padding: 12px;
+  }
+}

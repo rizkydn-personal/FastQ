@@ -137,7 +137,7 @@ Untuk Android, pasang seluruh dependency pengembangan lalu gunakan `npm run cap:
 
 ## Fitur
 
-- POS dengan keranjang, diskon, pajak, pembayaran, piutang, struk, barcode, dan dukungan printer browser/native.
+- POS dengan keranjang, diskon, pembayaran, piutang, struk, barcode, dan dukungan printer browser/native.
 - Produk, varian, stok, impor/ekspor CSV, shift, absensi, kas, refund, dan persetujuan role.
 - Dashboard pemilik, laporan, antrean sinkronisasi, serta penyimpanan snapshot lokal terenkripsi.
 

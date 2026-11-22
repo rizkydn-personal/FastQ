@@ -43,6 +43,23 @@ export async function applyShiftEvent({ client, event, scope, actor, deviceId, i
             [scope, s.id],
           );
           if (pendingDiscount.rowCount) throw Object.assign(new Error('Shift tidak dapat ditutup sebelum semua diskon disetujui atau ditolak.'), { status: 409 });
+          const unrequestedDiscount = await client.query(
+            `SELECT 1 FROM sync_events sale
+             WHERE sale.outlet_id=$1 AND sale.event_type='sale.upsert'
+               AND sale.payload->>'shiftId'=$2 AND sale.payload->>'status' IN ('Lunas','Piutang')
+               AND EXISTS (
+                 SELECT 1 FROM jsonb_array_elements(sale.payload->'items') AS item
+                 WHERE (item->'discount'->>'pendingApproval')::boolean IS TRUE
+                   AND NOT EXISTS (
+                     SELECT 1 FROM sync_events req
+                     WHERE req.outlet_id=$1 AND req.event_type='discount.request'
+                       AND req.payload->>'id' = item->'discount'->>'approvalRequestId'
+                   )
+               )
+             LIMIT 1 FOR UPDATE`,
+            [scope, s.id],
+          );
+          if (unrequestedDiscount.rowCount) throw Object.assign(new Error('Shift tidak dapat ditutup sebelum semua diskon besar tercatat sebagai permintaan persetujuan dan diputuskan.'), { status: 409 });
           if (!Number.isSafeInteger(s.physicalCash) || s.physicalCash < 0) throw Object.assign(new Error('Jumlah kas fisik tidak valid.'), { status: 400 });
           const cashSales = await client.query(
             `SELECT COALESCE(sum(p.amount_rupiah),0)::text AS total FROM payments p JOIN sales sale ON sale.id=p.sale_id

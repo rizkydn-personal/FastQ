@@ -1,0 +1,664 @@
+/* ==========================================================================
+   FastQ polish-gemini-shift.css — Shift & kas + Absensi, gaya Gemini.
+   --------------------------------------------------------------------------
+   Sumber desain: ~/workspace/user/files/FastQ_POS_-_Polished_UI__1__0_xch2.html
+   (bagian shift 741-840, absen 841-921, absenDetailModal 1237-1273,
+   shiftPreviewModal 1274-1293, cashMoveModal 1314-1334,
+   closeShiftModal 1335-1359). Diterapkan ke markup ASLI repo (legacy-pages/
+   shift.html + attendance.html, render JS 05-shift-cash.js /
+   06-shift-roles.js / 13-attendance.js) — CSS SAJA, tanpa ubah logika.
+
+   CATATAN PEMETAAN (markup asli != prototipe Gemini):
+   - Prototipe memakai #page-absen; repo memakai #page-attendance.
+   - Prototipe punya 4 modal bernama; repo memakai SATU modal generik
+     (.modal-backdrop > .modal, #modalTitle/#modalBody/#modalFoot) untuk
+     semua alur shift/absen (kas masuk/keluar, tutup shift, detail kas,
+     detail absen). Aturan modal di bawah di-scope
+     body:has(#page-shift.active) / body:has(#page-attendance.active)
+     sehingga hanya berlaku saat modal dibuka dari halaman ini.
+   - Filter tanggal riwayat shift TETAP input teks dd/mm/yyyy (tidak
+     diubah type-nya); jam pulang "—" adalah data (belum absen pulang),
+     bukan bug; tidak ada yang diubah di sini selain tampilan.
+   - KPI "Hadir/Bertugas/Rekap" prototipe tidak ada di markup asli
+     (asli: .detail-list #attendanceStatus) — digayakan apa adanya.
+   - Ikon: TANPA CDN Phosphor; repo sudah memakai inline SVG
+     (.shift-copy-date svg) — tidak ada ikon baru yang ditambahkan.
+
+   Token Gemini (primer repo DIPERTAHANKAN #1D4ED8, bukan #1447E6):
+   - Page bg #F6F8FC; navy #0F2544 (judul/angka, 800, ls -0.02em);
+     sekunder #475569; redup #64748B; border #E2E8F0;
+     tint #DBEAFE / #EFF6FF; hover primer #1E40AF.
+   - Kartu: putih, border 1px rgba(226,232,240,.85), radius 16px,
+     shadow "0 1px 2px rgba(15,37,68,.03), 0 4px 12px rgba(15,37,68,.02)".
+   - Radius: kartu 16px, tombol/input 12px, kecil 8px, pill 9999px.
+   - Input: radius 12px, border #E2E8F0, bg #F8FAFC, fokus border
+     #1D4ED8 + ring 2px rgba(29,78,216,.10), tinggi 48px, font 16px mobile.
+   - Modal overlay rgba(15,23,42,.40) + blur 2px; konten radius 16px.
+   - Font: system stack SAJA (tanpa Google Fonts).
+   - Fokus: outline 2px solid #1D4ED8, offset 2px; touch target >=44px
+     (48px di coarse); teks konten >=13px (label uppercase tracking
+     BOLEH 11px, hanya label seksi); angka tabular-nums;
+     status = teks + dot warna (bukan pill).
+   - OFFLINE-FIRST: tidak ada CDN, tidak ada font eksternal.
+
+   File ini file BARU (belum di-wire ke index.html / copy-legacy.mjs —
+   itu urusan parent). Verifikasi via injeksi page.addStyleTag.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Token + font system stack, scope halaman.
+   -------------------------------------------------------------------------- */
+#page-shift,
+#page-attendance {
+  --g-navy: #0f2544;
+  --g-secondary: #475569;
+  --g-muted: #64748b;
+  --g-border: #e2e8f0;
+  --g-page: #f6f8fc;
+  --g-tint: #eff6ff;
+  --g-tint-strong: #dbeafe;
+  --g-blue: #1d4ed8;
+  --g-blue-hover: #1e40af;
+  --g-card-shadow: 0 1px 2px rgba(15, 37, 68, .03), 0 4px 12px rgba(15, 37, 68, .02);
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Page bg Gemini: main ikut berubah saat salah satu halaman aktif. */
+body:has(#page-shift.active) main,
+body:has(#page-attendance.active) main {
+  background: #f6f8fc;
+}
+
+/* --------------------------------------------------------------------------
+   1. Judul halaman + subjudul.
+   -------------------------------------------------------------------------- */
+body #page-shift .page-heading h1,
+body #page-attendance .page-heading h1 {
+  color: #0f2544;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+#page-shift .page-heading p,
+#page-attendance .page-heading p {
+  color: #475569;
+}
+
+/* --------------------------------------------------------------------------
+   2. Kartu / panel: putih, border #E2E8F0, radius 16px, shadow Gemini.
+   (polish-shift.css memakai radius 20px — di sini disamakan ke 16px.)
+   -------------------------------------------------------------------------- */
+body #page-shift .section-split > .panel,
+body #page-shift .section-split > .panel:first-child,
+#page-attendance .attendance-cards > .panel {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, .85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, .03), 0 4px 12px rgba(15, 37, 68, .02);
+}
+#page-shift .panel-title,
+#page-attendance .panel-title {
+  color: #0f2544;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   3. Banner shift aktif (Gemini: header tint + badge teks + dot,
+   sel metrik bg #F8FAFC, tombol Tutup shift ghost).
+   -------------------------------------------------------------------------- */
+body #page-shift .shift-banner-active {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, .85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, .03), 0 4px 12px rgba(15, 37, 68, .02);
+  overflow: hidden;
+}
+body #page-shift .shift-banner-header {
+  background: #eff6ff;
+  border-bottom: 1px solid #e2e8f0;
+}
+/* Status = teks + dot warna (bukan pill). Dot sudah ada di markup. */
+#page-shift .shift-live-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 9999px;
+  background: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, .15);
+}
+#page-shift .shift-banner-heading > strong {
+  color: #0f2544;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+#page-shift .shift-copy-date {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+#page-shift .shift-copy-date svg {
+  width: 14px;
+  height: 14px;
+  color: #64748b;
+}
+#page-shift .shift-copy-row > span:first-child {
+  color: #64748b;
+  font-size: 13px;
+}
+#page-shift .shift-copy-cashier {
+  color: #0f2544;
+  font-size: 13px;
+  font-weight: 800;
+}
+/* Sel metrik ala Gemini: bg #F8FAFC, border #E2E8F0, radius 12px. */
+body #page-shift .shift-metric {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+#page-shift .shift-metric > span {
+  color: #64748b;
+  font-size: 13px;
+}
+#page-shift .shift-metric > strong {
+  color: #0f2544;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+#page-shift .shift-metric:last-child {
+  justify-items: start;
+  text-align: left;
+}
+
+/* Banner "belum ada shift aktif": kartu tint, bukan banner biru pekat. */
+body #page-shift .shift-banner:not(.shift-banner-active) {
+  background: #eff6ff;
+  border: 1px solid rgba(226, 232, 240, .85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, .03), 0 4px 12px rgba(15, 37, 68, .02);
+}
+#page-shift .shift-banner:not(.shift-banner-active) .shift-icon {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 12px;
+}
+#page-shift .shift-banner:not(.shift-banner-active) .shift-copy strong {
+  color: #0f2544;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+#page-shift .shift-banner:not(.shift-banner-active) .shift-copy span {
+  color: #475569;
+}
+
+/* --------------------------------------------------------------------------
+   4. Tombol: primer #1D4ED8 (hover #1E40AF), teks putih bold, radius 12px,
+   shadow-sm; ghost putih/border #E2E8F0/teks navy; bahaya tetap merah
+   hanya untuk teks, bukan blok. Tinggi >=44px (48px di coarse, §10).
+   -------------------------------------------------------------------------- */
+#page-shift .button,
+#page-attendance .button {
+  border-radius: 12px;
+  font-variant-numeric: tabular-nums;
+}
+body #page-shift .button.primary,
+body #page-attendance .button.primary,
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="in"] {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, .08);
+}
+body #page-shift .button.primary:hover,
+body #page-attendance .button.primary:hover,
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="in"]:hover {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+}
+/* Ghost: kas keluar, Tutup shift, Ekspor CSV, Absen pulang (ala Gemini). */
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="out"] {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f2544 !important;
+  font-weight: 700;
+}
+body #page-shift #closeShift {
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #0f2544 !important;
+  font-weight: 700;
+}
+body #page-shift #closeShift:hover,
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="out"]:hover {
+  background: #f8fafc !important;
+}
+#page-attendance #exportAttendance {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f2544;
+  font-weight: 700;
+}
+#page-attendance #exportAttendance:hover {
+  background: #f8fafc;
+}
+/* Absen pulang: ghost navy (Gemini), bukan merah — pulang bukan aksi bahaya. */
+body #page-attendance #attendanceOut {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f2544 !important;
+  font-weight: 700;
+}
+body #page-attendance #attendanceOut:hover {
+  background: #f8fafc !important;
+}
+body #page-attendance #attendanceIn {
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, .08);
+}
+body #page-attendance #attendanceIn:hover {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. Tabel (desktop): header uppercase 11px tracking, bg #F8FAFC;
+   baris border #E2E8F0; hover #F8FAFC; angka navy tabular.
+   -------------------------------------------------------------------------- */
+#page-shift .table-wrap table th,
+#page-attendance .table-wrap table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+}
+#page-shift .table-wrap table td,
+#page-attendance .table-wrap table td {
+  color: #475569;
+  font-size: 13px;
+  border-bottom: 1px solid #e2e8f0;
+  font-variant-numeric: tabular-nums;
+}
+#page-shift .table-wrap tbody tr:hover,
+#page-attendance .table-wrap tbody tr:hover {
+  background: #f8fafc;
+}
+#page-shift .table-wrap td.numeric,
+#page-attendance .table-wrap td.numeric {
+  color: #0f2544;
+  font-weight: 700;
+}
+/* Kas keluar negatif tetap merah (satu-satunya merah di halaman shift). */
+#page-shift #cashBody td.numeric {
+  color: #0f2544;
+}
+/* Selisih negatif diwarnai inline oleh JS (var(--red)) — biarkan. */
+#page-shift .empty-row,
+#page-attendance .empty-row {
+  color: #64748b;
+  font-size: 13px;
+}
+/* Status kas: sel kosong "—" tampil redup, bukan pill. */
+#page-shift .cash-status-cell {
+  color: #64748b;
+}
+
+/* --------------------------------------------------------------------------
+   6. Kartu mobile kas + riwayat shift (<=800px): radius 16px, border
+   #E2E8F0, shadow Gemini; label 11px uppercase tracking, nilai 13px+.
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) {
+  body #page-shift .cash-mobile-item,
+  body #page-shift .shift-history-card {
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, .85);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15, 37, 68, .03), 0 4px 12px rgba(15, 37, 68, .02);
+    padding: 14px;
+  }
+  #page-shift .cash-mobile-item .inventory-mobile-product strong,
+  #page-shift .shift-history-card .inventory-mobile-product strong {
+    color: #0f2544;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  #page-shift .cash-mobile-item .inventory-mobile-product span,
+  #page-shift .shift-history-card .inventory-mobile-product span {
+    color: #64748b;
+    font-size: 13px;
+  }
+  #page-shift .cash-mobile-amount {
+    color: #0f2544;
+    font-size: 14px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  #page-shift .cash-mobile-amount.cash-out,
+  #page-shift .shift-history-difference.cash-out {
+    color: #d92d20;
+  }
+  #page-shift .shift-history-difference > span {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  #page-shift .shift-history-difference > strong {
+    color: #0f2544;
+    font-size: 14px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  #page-shift .inventory-mobile-summary {
+    color: #64748b;
+    font-size: 13px;
+  }
+  #page-shift .inventory-mobile-summary strong {
+    color: #0f2544;
+  }
+  #page-shift .inventory-mobile-summary > div > span {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  #page-shift .cash-mobile-status {
+    color: #64748b;
+    font-size: 13px;
+  }
+  #page-shift .cash-mobile-status > span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  /* Paginasi kartu mobile: tombol ghost 44px, info halaman redup. */
+  #page-shift .mobile-card-pagination {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 12px;
+    margin-top: 4px;
+  }
+  #page-shift .mobile-card-pagination .button {
+    min-height: 44px;
+    border-color: #e2e8f0;
+    background: #ffffff;
+    color: #0f2544;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 12px;
+  }
+  #page-shift .mobile-card-pagination > span {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. Filter tanggal riwayat shift: input teks dd/mm/yyyy, 48px, radius
+   12px, border #E2E8F0, bg #F8FAFC, fokus ring biru. (Type TIDAK diubah.)
+   -------------------------------------------------------------------------- */
+#page-shift .shift-history-filter label {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+body #page-shift #shiftHistoryDate {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #0f2544;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+body #page-shift #shiftHistoryDate:focus {
+  background: #ffffff;
+  border-color: #1d4ed8;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, .10);
+}
+#page-shift .shift-history-filter .hint {
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------------------------
+   8. Absensi: panel hari ini + detail-list + tabel riwayat.
+   -------------------------------------------------------------------------- */
+#page-attendance .attendance-today-copy .hint {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+#page-attendance #attendanceStatus .detail-row {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 0;
+}
+#page-attendance #attendanceStatus .detail-row > span {
+  color: #64748b;
+  font-size: 13px;
+}
+#page-attendance #attendanceStatus .detail-row > strong {
+  color: #0f2544;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+/* Status hari ini = teks + dot warna (bukan pill). */
+#page-attendance #attendanceStatus .detail-row:first-child > strong::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 9999px;
+  background: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, .15);
+  vertical-align: 1px;
+}
+/* Tabel riwayat absen: nama navy tebal, jam tabular, pulang "—" redup. */
+#page-attendance #attendanceBody td:first-child {
+  color: #0f2544;
+  font-weight: 700;
+}
+#page-attendance #attendanceBody td {
+  font-variant-numeric: tabular-nums;
+}
+#page-attendance .attendance-location a {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+/* Kartu absen di HP (<=640px, tabel jadi kartu): radius 16px + shadow. */
+@media (max-width: 640px) {
+  body #page-attendance .attendance-history tbody tr {
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, .85);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15, 37, 68, .03), 0 4px 12px rgba(15, 37, 68, .02);
+    padding: 14px;
+  }
+  #page-attendance .attendance-history tbody td {
+    border-bottom: 0;
+    color: #0f2544;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #page-attendance .attendance-history tbody td::before {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Modal generik saat dibuka dari shift/absen (kas masuk/keluar,
+   tutup shift, detail kas, detail absen — padanan cashMoveModal,
+   closeShiftModal, shiftPreviewModal, absenDetailModal di prototipe).
+   Overlay rgba(15,23,42,.40) + blur 2px; konten radius 16px.
+   -------------------------------------------------------------------------- */
+body:has(#page-shift.active) .modal-backdrop,
+body:has(#page-attendance.active) .modal-backdrop {
+  background: rgba(15, 23, 42, .40);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+body:has(#page-shift.active) .modal,
+body:has(#page-attendance.active) .modal {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, .85);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .18);
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+body:has(#page-shift.active) .modal-head,
+body:has(#page-attendance.active) .modal-head {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 20px;
+}
+body:has(#page-shift.active) .modal-head h2,
+body:has(#page-attendance.active) .modal-head h2 {
+  color: #0f2544;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+body:has(#page-shift.active) .modal-close,
+body:has(#page-attendance.active) .modal-close {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  color: #64748b;
+}
+body:has(#page-shift.active) .modal-close:hover,
+body:has(#page-attendance.active) .modal-close:hover {
+  background: #f8fafc;
+  color: #0f2544;
+}
+body:has(#page-shift.active) .modal-body,
+body:has(#page-attendance.active) .modal-body {
+  padding: 20px;
+  color: #475569;
+  font-size: 14px;
+}
+body:has(#page-shift.active) .modal-body label,
+body:has(#page-attendance.active) .modal-body label {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+body:has(#page-shift.active) .modal-body .field,
+body:has(#page-attendance.active) .modal-body .field,
+body:has(#page-shift.active) .modal-body input,
+body:has(#page-attendance.active) .modal-body input,
+body:has(#page-shift.active) .modal-body select,
+body:has(#page-attendance.active) .modal-body select,
+body:has(#page-shift.active) .modal-body textarea,
+body:has(#page-attendance.active) .modal-body textarea {
+  height: 48px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0f2544;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+body:has(#page-shift.active) .modal-body .field:focus,
+body:has(#page-attendance.active) .modal-body .field:focus,
+body:has(#page-shift.active) .modal-body input:focus,
+body:has(#page-attendance.active) .modal-body input:focus,
+body:has(#page-shift.active) .modal-body select:focus,
+body:has(#page-attendance.active) .modal-body select:focus,
+body:has(#page-shift.active) .modal-body textarea:focus,
+body:has(#page-attendance.active) .modal-body textarea:focus {
+  background: #ffffff;
+  border-color: #1d4ed8;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, .10);
+}
+body:has(#page-shift.active) .modal-body .detail-row,
+body:has(#page-attendance.active) .modal-body .detail-row {
+  border-bottom: 1px solid #e2e8f0;
+}
+body:has(#page-shift.active) .modal-body .detail-row > span,
+body:has(#page-attendance.active) .modal-body .detail-row > span {
+  color: #64748b;
+  font-size: 13px;
+}
+body:has(#page-shift.active) .modal-body .detail-row > strong,
+body:has(#page-attendance.active) .modal-body .detail-row > strong {
+  color: #0f2544;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+body:has(#page-shift.active) .modal-foot,
+body:has(#page-attendance.active) .modal-foot {
+  border-top: 1px solid #e2e8f0;
+  padding: 14px 20px;
+}
+body:has(#page-shift.active) .modal-foot .button,
+body:has(#page-attendance.active) .modal-foot .button {
+  min-height: 48px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+body:has(#page-shift.active) .modal-foot .button.primary,
+body:has(#page-attendance.active) .modal-foot .button.primary {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, .08);
+}
+body:has(#page-shift.active) .modal-foot .button.primary:hover,
+body:has(#page-attendance.active) .modal-foot .button.primary:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+}
+body:has(#page-shift.active) .modal-foot .button:not(.primary),
+body:has(#page-attendance.active) .modal-foot .button:not(.primary) {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f2544;
+}
+
+/* --------------------------------------------------------------------------
+   10. Fokus + sentuh: outline 2px solid #1D4ED8 offset 2px (ganti 3px
+   bawaan polish.css); tombol/input >=44px, 48px di coarse pointer.
+   -------------------------------------------------------------------------- */
+#page-shift :focus-visible,
+#page-attendance :focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  #page-shift .button,
+  #page-attendance .button {
+    min-height: 48px;
+  }
+  #page-shift .field,
+  #page-attendance .field {
+    min-height: 48px;
+    font-size: 16px;
+  }
+  #page-shift .modal-close,
+  #page-attendance .modal-close {
+    min-width: 48px;
+    min-height: 48px;
+  }
+}

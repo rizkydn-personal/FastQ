@@ -4,11 +4,32 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0B2E6B">
   <title>FastQ POS</title><link rel="modulepreload" href="./pos-utils.mjs"><link rel="modulepreload" href="./pos-storage.mjs"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg" type="image/svg+xml"><link rel="icon" href="./favicon.ico" sizes="any"><link rel="icon" href="./fastq-icon-192.png" type="image/png"><meta name="description" content="Aplikasi kasir offline-first untuk operasional toko.">
   <link rel="stylesheet" href="./polish.css">
+  <link rel="stylesheet" href="./polish-extra.css">
+  <link rel="stylesheet" href="./polish-kasir.css">
+  <link rel="stylesheet" href="./polish-logo.css">
+  <link rel="stylesheet" href="./polish-laporan.css">
+  <link rel="stylesheet" href="./polish-produk.css">
+  <link rel="stylesheet" href="./polish-shift.css">
+  <link rel="stylesheet" href="./polish-pengguna.css">
+  <link rel="stylesheet" href="./polish-gemini-kasir.css">
+  <link rel="stylesheet" href="./polish-gemini-laporan.css">
+  <link rel="stylesheet" href="./polish-gemini-produk.css">
+  <link rel="stylesheet" href="./polish-gemini-shift.css">
+  <link rel="stylesheet" href="./polish-gemini-pengguna.css">
+  <link rel="stylesheet" href="./polish-gemini2-cart.css">
+  <link rel="stylesheet" href="./polish-gemini2-fonts.css">
+  <link rel="stylesheet" href="./polish-gemini2-pages.css">
+  <link rel="stylesheet" href="./polish-gemini2-icons.css">
+  <link rel="stylesheet" href="./polish-gemini3-chrome.css">
+  <link rel="stylesheet" href="./polish-gemini3-ops.css">
+  <link rel="stylesheet" href="./polish-gemini3-produk.css">
+  <link rel="stylesheet" href="./polish-gemini3-laporan.css">
+  <link rel="stylesheet" href="./polish-gemini3-kasir.css">
 </head>
 <body>
 <div class="app-loader" id="appLoader" role="status" aria-live="polite"><img src="./fastq-mark.png" alt=""><span class="loader-ring" aria-hidden="true"></span><span>Menyiapkan kasir FastQ</span></div>
 <div class="shell">
-  <header class="topbar"><div class="brand"><span class="brand-mark"><img src="./fastq-mark.png" alt=""></span><span class="brand-name">FastQ</span><span class="mobile-store-name" id="mobileStoreName"></span></div><div class="outlet"><select id="outletSelect" class="field" style="height:34px;padding:0 8px"></select></div><div class="top-spacer"></div><button type="button" id="syncPill" class="sync-pill" title="Sinkronkan sekarang" aria-label="Sinkronkan sekarang"><svg class="header-sync-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.6-4.6L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 14.6 4.6L21 15"/><path d="M21 20v-5h-5"/></svg><span id="syncText" aria-live="polite">Tersimpan di perangkat</span></button><button type="button" class="mobile-header-menu" id="mobileHeaderMenu" aria-label="Buka menu" aria-expanded="false" aria-controls="mobileHeaderDropdown"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><div class="clock" id="clock"></div><button type="button" class="user-menu" id="roleButton" title="Ganti role"><span class="avatar" id="avatar">KA</span><span id="roleName">Kasir</span><svg class="user-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button></header>
+  <header class="topbar"><div class="brand"><span class="brand-mark"><img src="./fastq-mark.png" alt=""></span><span class="brand-name">FastQ</span><span class="brand-sep" aria-hidden="true"></span><span class="mobile-store-name" id="mobileStoreName"></span></div><div class="outlet"><select id="outletSelect" class="field" style="height:34px;padding:0 8px"></select></div><div class="top-spacer"></div><button type="button" id="syncPill" class="sync-pill" title="Sinkronkan sekarang" aria-label="Sinkronkan sekarang"><svg class="header-sync-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.6-4.6L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 14.6 4.6L21 15"/><path d="M21 20v-5h-5"/></svg><span id="syncText" aria-live="polite">Tersimpan di perangkat</span></button><button type="button" class="mobile-header-menu" id="mobileHeaderMenu" aria-label="Buka menu" aria-expanded="false" aria-controls="mobileHeaderDropdown"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><div class="clock" id="clock"></div><button type="button" class="user-menu" id="roleButton" title="Ganti role"><span class="avatar" id="avatar">KA</span><span id="roleName">Kasir</span><svg class="user-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></button></header>
   <nav class="sidebar" aria-label="Navigasi utama">
     <div class="side-label">Operasional</div>
     <button type="button" class="nav-link active" data-page="pos" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h3"/></svg><span class="nav-text">Kasir</span></button>
@@ -20,7 +41,7 @@
     <button type="button" class="nav-link" data-page="outlets"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M8 9h.01M16 9h.01"/></svg><span class="nav-text">Outlet</span></button>
     <button type="button" class="nav-link" data-page="users"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1m2-9 2 2 4-4"/></svg><span class="nav-text">Pengguna</span></button>
     <button type="button" class="nav-link mobile-more" id="mobileMoreButton" aria-label="Menu lainnya"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span class="nav-text">Lainnya</span></button>
-    <div class="sidebar-bottom"><div class="side-note">Data transaksi tersimpan di perangkat ini dan siap digunakan tanpa internet.</div></div>
+    <div class="sidebar-bottom"><div class="side-note">Data transaksi tersimpan lokal dan siap digunakan tanpa internet.</div></div>
   </nav>
   <main>
     <!-- PAGE:pos -->
@@ -30,8 +51,12 @@
     <!-- PAGE:reports -->
     <!-- PAGE:outlets -->
     <!-- PAGE:users -->
-<div class="modal-backdrop" id="modalBackdrop" role="presentation"><section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button type="button" class="modal-close" id="modalClose" aria-label="Tutup">×</button></div><div class="modal-body" id="modalBody"></div><div class="modal-foot" id="modalFoot"></div></section></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
-<link rel="stylesheet" href="./polish.css">
+<div class="modal-backdrop" id="modalBackdrop" role="presentation"><section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle"></h2><button type="button" class="modal-close" id="modalClose" aria-label="Tutup">×</button></div><div class="modal-body" id="modalBody"></div><div class="modal-foot" id="modalFoot"></div></section></div>
+<div class="mobile-cart-drawer-backdrop" id="mobileCartDrawerBackdrop" hidden></div>
+<section class="mobile-cart-drawer" id="mobileCartDrawer" role="dialog" aria-modal="true" aria-labelledby="mobileCartDrawerTitle" hidden><div class="mobile-cart-drawer-grip" aria-hidden="true"></div><div class="mobile-cart-drawer-head"><h2 id="mobileCartDrawerTitle">Preview keranjang</h2><button type="button" class="mobile-cart-drawer-close" id="mobileCartDrawerClose" aria-label="Tutup preview keranjang">×</button></div><div class="mobile-cart-drawer-actions"><button type="button" class="button small" id="mobileCartDrawerDiscount">Diskon</button><button type="button" class="button small danger" id="mobileCartDrawerClear">Kosongkan</button></div><div class="mobile-cart-drawer-list" id="mobileCartList"></div><div class="mobile-cart-drawer-summary"><div class="summary-row"><span>Subtotal</span><strong id="mobileDrawerSubtotal">Rp 0</strong></div><div class="summary-row discount" id="mobileDrawerDiscountRow" hidden><span id="mobileDrawerDiscountLabel">Diskon transaksi</span><strong id="mobileDrawerDiscountValue">−Rp 0</strong></div><div class="summary-total"><span>Total</span><strong id="mobileDrawerTotal">Rp 0</strong></div></div><div class="mobile-cart-drawer-foot"><button type="button" class="button" id="mobileCartDrawerCloseButton">Tutup</button><button type="button" class="button primary mobile-cart-drawer-pay" id="mobileCartDrawerPay">Bayar <span id="mobileCartDrawerPayTotal">Rp 0</span></button></div></section>
+<div class="menu-drawer-backdrop" id="menuDrawerBackdrop" hidden></div>
+<aside class="menu-drawer" id="menuDrawerModal" role="dialog" aria-modal="true" aria-label="Menu" hidden><div class="menu-drawer-head"><div class="menu-drawer-account"><span class="avatar" id="menuDrawerAvatar">KA</span><div class="menu-drawer-account-text"><strong id="menuDrawerUserName">Kasir</strong><span id="menuDrawerUserMeta">Kasir</span></div></div><button type="button" class="mobile-cart-drawer-close" id="menuDrawerClose" aria-label="Tutup menu">×</button></div><p class="menu-drawer-label">Menu Lengkap</p><nav class="menu-drawer-list" id="menuDrawerList"></nav><div class="menu-drawer-foot"><button type="button" class="button" id="menuDrawerSwitchAccount">Ganti akun</button></div></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 const posDateElement=document.getElementById('posDate');
 if(posDateElement){const posDateObserver=new MutationObserver(()=>{const updated=posDateElement.textContent.replace(/\s+·\s+Transaksi baru$/,'');if(updated!==posDateElement.textContent){posDateElement.textContent=updated;posDateObserver.disconnect()}});posDateObserver.observe(posDateElement,{childList:true})}

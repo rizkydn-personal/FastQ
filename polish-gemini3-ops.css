@@ -1,0 +1,659 @@
+/* ==========================================================================
+   polish-gemini3-ops.css — FastQ "Gemini exact" ronde 3: OPS PAGES
+   (Shift & kas, Absen, Outlet & transfer, Pengguna & akses)
+   --------------------------------------------------------------------------
+   Sumber desain (otoritas): file render
+   ~/workspace/user/files/FastQ_POS_-_Polished_UI__1__0_xch2.html
+   + pengukuran ~/workspace/fastq-audit/shots-polish2/gemini-exact/render/
+   measurements.md + measurements.json.
+   Target angka (render):
+   - Tab header semua 4 halaman: fixed 53,6 px, bg #F6F8FC/96 + blur,
+     judul 16 px/800 (mobile) / 20 px (desktop).
+   - Kartu: radius 16, padding 14 (mobile) / 16 (desktop),
+     border rgba(226,232,240,.85).
+   - SHIFT: kartu utama 358x240,5 / 1152x156; tombol primer 96x28 / 100x28,
+     12 px/700, radius 12.
+   - ABSEN: kartu stat 112,7x76,5 / 376x82,5, radius 16;
+     tombol primer 77x32 / 81x32, 12 px/700, radius 12.
+   - OUTLET: kartu utama 358x432 / 762,7x300, radius 16;
+     kontrol transfer 324x34 / 358,3x34, 12 px/500 / 13 px/500, radius 12.
+   - PENGGUNA: kartu utama 358x309 / 1152x309, radius 16.
+   - Global: bg #F6F8FC, teks #0F2544, primer #1447E6, Inter body,
+     Plus Jakarta Sans judul.
+   CATATAN PEMETAAN (markup asli != prototipe):
+   - Tab header prototipe (.tab-fixed-header, fixed) dipetakan ke
+     .page-heading live sebagai STICKY (top = tinggi topbar live: 56 px,
+     terukur di 390 & 1440) — tanpa mengubah layout, tanpa padding-top
+     tambahan. flex-direction dipaksa row: polish.css memakai column di
+     <=800 px, yang + align-items:center membuat judul terpusat.
+   - Prototipe memakai #page-absen; repo memakai #page-attendance.
+   - "Tombol primer" outlet yang terukur di render (324x34 / 358,3x34,
+     12-13 px/500, teks navy, bg putih) adalah KONTROL FORM transfer
+     (dropdown Dari/Ke/Produk + Jumlah/Catatan), bukan tombol biru
+     "Catat transfer" (render: px-4 py-2.5, 12 px/700, putih di #1447E6).
+     Keduanya disamakan di sini.
+   - "Tombol primer" absen render (77x32 / 81x32) adalah tombol "Masuk"
+     (dengan ikon); live tidak punya ikon itu, jadi lebar dicapai lewat
+     min-width 77/81 px + label pendek "Masuk"/"Pulang" (diubah di
+     13-attendance.js) — tanpa ikon, tanpa lebar paksa yang memotong teks
+     status ("Mengambil lokasi...").
+   - Primer repo ronde 1/2 adalah #1D4ED8; ronde ini mengikuti render dan
+     memakai #1447E6 HANYA untuk tombol primer di 4 halaman ini
+     (hover #1D4ED8 = blue-700 render).
+   - File ini file BARU (belum di-wire ke index.html / copy-legacy.mjs /
+     static-files.mjs / sw.js — itu urusan parent). Verifikasi via injeksi.
+   BATAS (mengikat):
+   - CSS SAJA di file ini. TANPA ubah logika; tanggal shift tetap input
+     TEXT dd/mm/yyyy (bukan type=date); absen tetap check-in saja
+     (tidak ada form/tombol jam pulang baru — tombol "Pulang" live sudah
+     ada sejak dulu dan tidak dihapus); matriks role, PPN tetap hilang,
+     offline-first tanpa CDN runtime.
+   Token: bg #F6F8FC · navy #0F2544 · sekunder #475569 · redup #64748B ·
+   redup-2 #94A3B8 · primer #1447E6 · hover #1D4ED8 · border #E2E8F0 ·
+   kartu putih, border 1px rgba(226,232,240,.85), radius 16px,
+   shadow 0 1px 2px rgba(15,37,68,.03), 0 4px 12px rgba(15,37,68,.02) ·
+   tombol/input radius 12px.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Fondasi 4 halaman: bg, warna teks, font.
+   -------------------------------------------------------------------------- */
+#page-shift,
+#page-attendance,
+#page-outlets,
+#page-users {
+  color: #0f2544;
+  font-family: Inter, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+body:has(#page-outlets.active) main,
+body:has(#page-users.active) main {
+  background: #f6f8fc;
+}
+#page-shift h1, #page-shift h2, #page-shift .panel-title,
+#page-attendance h1, #page-attendance h2, #page-attendance .panel-title,
+#page-outlets h1, #page-outlets h2, #page-outlets .panel-title,
+#page-users h1, #page-users h2, #page-users .panel-title,
+#page-shift .shift-banner-heading > strong,
+#page-attendance .attendance-stat-value {
+  font-family: "Plus Jakarta Sans", Inter, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   1. Tab header (semua 4 halaman): sticky 53,6 px, bg #F6F8FC/96 + blur.
+   Topbar live: 56 px (terukur 390 & 1440) — header menempel
+   tepat di bawahnya. Judul 16 px/800 mobile, 20 px/800 desktop;
+   subjudul 11 px #64748B, hanya desktop (render: hidden sm:block).
+   -------------------------------------------------------------------------- */
+#page-shift .page-heading,
+#page-attendance .page-heading,
+#page-outlets .page-heading,
+#page-users .page-heading {
+  position: sticky;
+  top: 56px;
+  z-index: 4;
+  height: 53.6px;
+  min-height: 53.6px;
+  margin-bottom: 16px;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  background: rgba(246, 248, 252, 0.96);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+#page-shift .page-heading h1,
+#page-attendance .page-heading h1,
+#page-outlets .page-heading h1,
+#page-users .page-heading h1 {
+  margin: 0;
+  color: #0f2544;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-shift .page-heading p,
+#page-attendance .page-heading p,
+#page-outlets .page-heading p,
+#page-users .page-heading p {
+  display: none;
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-shift .page-heading > div:first-child,
+#page-attendance .page-heading > div:first-child,
+#page-outlets .page-heading > div:first-child,
+#page-users .page-heading > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+#page-shift .page-heading .heading-actions,
+#page-attendance .page-heading .heading-actions,
+#page-outlets .page-heading .heading-actions,
+#page-users .page-heading .heading-actions {
+  margin-left: auto;
+  flex: none;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Tombol aksi di tab header: tinggi render 28 px, 12 px/700, radius 12
+   (Ekspor CSV, Tambah pengguna; "Tambah outlet" hidden by design). */
+#page-shift .page-heading .heading-actions .button,
+#page-attendance .page-heading .heading-actions .button,
+#page-outlets .page-heading .heading-actions .button,
+#page-users .page-heading .heading-actions .button {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 12px;
+}
+@media (min-width: 641px) {
+  #page-shift .page-heading p,
+  #page-attendance .page-heading p,
+  #page-outlets .page-heading p,
+  #page-users .page-heading p {
+    display: block;
+  }
+}
+@media (min-width: 801px) {
+  #page-shift .page-heading,
+  #page-attendance .page-heading,
+  #page-outlets .page-heading,
+  #page-users .page-heading {
+    padding: 0 24px;
+  }
+  #page-shift .page-heading h1,
+  #page-attendance .page-heading h1,
+  #page-outlets .page-heading h1,
+  #page-users .page-heading h1 {
+    font-size: 20px;
+  }
+  #page-shift .page-heading .heading-actions .button,
+  #page-attendance .page-heading .heading-actions .button,
+  #page-outlets .page-heading .heading-actions .button,
+  #page-users .page-heading .heading-actions .button {
+    padding: 0 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Kartu: radius 16, padding 14 mobile / 16 desktop,
+   border rgba(226,232,240,.85) — semua panel + banner shift.
+   -------------------------------------------------------------------------- */
+#page-shift .panel,
+#page-attendance .panel,
+#page-outlets .panel,
+#page-users .panel,
+#page-shift .shift-banner {
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  padding: 14px;
+}
+@media (min-width: 801px) {
+  #page-shift .panel,
+  #page-attendance .panel,
+  #page-outlets .panel,
+  #page-users .panel,
+  #page-shift .shift-banner {
+    padding: 16px;
+  }
+}
+
+/* Primer #1447E6 (render) untuk tombol primer di 4 halaman ini saja
+   (hover #1D4ED8 = blue-700 render). !important hanya karena
+   polish-gemini-shift.css memakai !important untuk aturan yang sama. */
+body #page-shift .button.primary,
+body #page-attendance .button.primary,
+body #page-outlets .button.primary,
+body #page-users .button.primary {
+  background: #1447e6 !important;
+  border-color: #1447e6 !important;
+  color: #ffffff !important;
+}
+body #page-shift .button.primary:hover,
+body #page-attendance .button.primary:hover,
+body #page-outlets .button.primary:hover,
+body #page-users .button.primary:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. SHIFT — kartu utama = banner (#shiftOverview), panel ditumpuk penuh
+   seperti render (bukan 2 kolom .section-split).
+   -------------------------------------------------------------------------- */
+#page-shift .section-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+#page-shift .shift-banner {
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+}
+/* Tombol kas di toolbar panel: 96x28 mobile / 100x28 desktop, 12 px/700,
+   radius 12. Mobile: flex (bukan grid 2 kolom) supaya lebar ikut konten
+   seperti render; primer #1447E6 untuk "+ Kas masuk".
+   !important di ukuran: polish.css punya selektor grup ber-spesifisitas
+   (3,10,1)/(2,9,0) yang memaksa target sentuh 48 px di tombol ini. */
+#page-shift .section-split > .panel:first-child .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body #page-shift .section-split > .panel:first-child .toolbar {
+  display: flex !important;
+}
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash] {
+  width: auto !important;
+  flex: none !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="in"] {
+  background: #1447e6 !important;
+  border-color: #1447e6 !important;
+  color: #ffffff !important;
+}
+body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash="in"]:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+@media (min-width: 801px) {
+  body #page-shift .section-split > .panel:first-child .toolbar .button[data-cash] {
+    padding: 6px 12px;
+  }
+}
+/* Hint "Ketuk baris untuk detail" (span.cash-hint, disisipkan JS di dalam
+   h2 "Pergerakan kas"): 11 px/500 #94A3B8, rata kanan. */
+#page-shift .panel-title.cash-title-with-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#page-shift .panel-title .cash-hint {
+  flex: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Subjudul riwayat shift (p.shift-history-subtitle, disisipkan JS):
+   "Rekap shift selesai dan selisih kas" — 11 px #94A3B8. */
+#page-shift .shift-history-subtitle {
+  margin: -8px 0 12px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.4;
+}
+/* Filter tanggal riwayat: input teks dd/mm/yyyy TETAP (jangan type=date);
+   baris input + tombol Reset berdampingan seperti render. */
+#page-shift .shift-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#page-shift .shift-date-row #shiftHistoryDate {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#page-shift #shiftHistoryDate {
+  height: 30px;
+  min-height: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+#page-shift #btnClearShiftDate {
+  flex: none;
+  height: 28px;
+  min-height: 28px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#page-shift #btnClearShiftDate:hover {
+  background: #f8fafc;
+}
+/* Paginasi kartu mobile shift (label diubah JS jadi "‹ Prev / n / m /
+   Next ›"): tombol 28 px, 12 px/600 navy, radius 12; info "n / m"
+   12 px/600 #64748B; bukan flex:1 seperti legacy. */
+body #page-shift .mobile-card-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+body #page-shift .mobile-card-pagination .button {
+  flex: none;
+  width: auto;
+  min-width: 0;
+  height: 28px;
+  min-height: 28px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: #0f2544;
+  background: #ffffff;
+  border-color: #e2e8f0;
+  border-radius: 12px;
+}
+body #page-shift .mobile-card-pagination .button:disabled {
+  opacity: 0.4;
+}
+body #page-shift .mobile-card-pagination > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   4. ABSEN — kartu stat (grid 3 kolom, dibuat JS di renderAttendance),
+   tombol Masuk/Pulang, kartu riwayat + filter + paginasi.
+   -------------------------------------------------------------------------- */
+#page-attendance .attendance-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+#page-attendance .attendance-stat-card {
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+  padding: 14px;
+  min-height: 76.5px;
+}
+#page-attendance .attendance-stat-label {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-attendance .attendance-stat-value {
+  margin: 4px 0 0;
+  color: #0f2544;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-attendance .attendance-stat-value .attendance-stat-unit {
+  color: #94a3b8;
+  font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+@media (min-width: 801px) {
+  #page-attendance .attendance-stat-grid {
+    gap: 12px;
+  }
+  #page-attendance .attendance-stat-card {
+    min-height: 82.5px;
+  }
+  #page-attendance .attendance-stat-value {
+    font-size: 20px;
+  }
+}
+/* Tombol Masuk (primer) / Pulang (ghost): 77x32 mobile / 81x32 desktop
+   via min-width (bukan width paksa — teks status "Mengambil lokasi..."
+   tetap muat). 12 px/700, radius 12, tinggi 32 px.
+   Ikon depan (polish-gemini2-icons.css, 16 px + gap 8 px) dikecilkan ke
+   14 px + gap 4 px seperti render (ikon Phosphor text-sm): teks "Masuk"
+   ~37 px + ikon 14 + gap 4 + padding 20/24 px + border 2 px -> 77/81 px
+   (terukur repro kaskade: 77,4 / 81,4 px). */
+body #page-attendance #attendanceIn,
+body #page-attendance #attendanceOut {
+  flex: none;
+  gap: 4px;
+  height: 32px;
+  min-height: 32px;
+  min-width: 77px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+body #page-attendance #attendanceIn::before,
+body #page-attendance #attendanceOut::before {
+  width: 14px;
+  height: 14px;
+}
+body #page-attendance #attendanceIn {
+  background: #1447e6 !important;
+  border-color: #1447e6 !important;
+  color: #ffffff !important;
+}
+body #page-attendance #attendanceIn:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+@media (min-width: 801px) {
+  body #page-attendance #attendanceIn,
+  body #page-attendance #attendanceOut {
+    min-width: 81px;
+    padding: 6px 12px;
+  }
+}
+/* Kartu riwayat: judul 14 px/800 + hint 11 px #94A3B8 + filter "Semua staf"
+   (select native, dibuat JS) di satu baris kepala. */
+#page-attendance .attendance-history-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+#page-attendance .attendance-history-head .panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-attendance .attendance-history-hint {
+  margin: 2px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-attendance #attendanceStaffFilter {
+  flex: none;
+  width: 128px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f2544;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+@media (min-width: 801px) {
+  #page-attendance #attendanceStaffFilter {
+    width: 144px;
+  }
+}
+/* Paginasi riwayat absen (dibuat JS, 4 baris/halaman seperti render):
+   tombol "‹ Prev" / "Next ›" 28 px, 12 px/600 navy, radius 12;
+   info "n / m" 12 px/600 #64748B. */
+#page-attendance .attendance-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+#page-attendance .attendance-pager .button {
+  flex: none;
+  width: auto;
+  height: 28px;
+  min-height: 28px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: #0f2544;
+  background: #ffffff;
+  border-color: #e2e8f0;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+#page-attendance .attendance-pager .button:disabled {
+  opacity: 0.4;
+}
+#page-attendance .attendance-pager > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   5. OUTLET — kartu utama = panel Transfer antar-outlet (kolom kiri
+   .section-split, 762,7 px di desktop render); kontrol form 34 px.
+   -------------------------------------------------------------------------- */
+#page-outlets .form-grid {
+  gap: 12px;
+}
+#page-outlets .form-field label {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+#page-outlets #transferFrom,
+#page-outlets #transferTo,
+#page-outlets #transferProduct,
+#page-outlets #transferQty,
+#page-outlets #transferNote {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f2544;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+@media (min-width: 801px) {
+  #page-outlets #transferFrom,
+  #page-outlets #transferTo,
+  #page-outlets #transferProduct,
+  #page-outlets #transferQty,
+  #page-outlets #transferNote {
+    font-size: 13px;
+  }
+}
+/* "Catat transfer": render px-4 py-2.5, 12 px/700, putih di #1447E6,
+   tinggi ~36 px. Lebar: 100% di HP (aturan ronde 2 dipertahankan),
+   auto di desktop — render tidak memakai full-width di sini. */
+#page-outlets #transferButton {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: #1447e6 !important;
+  border-color: #1447e6 !important;
+  color: #ffffff;
+}
+#page-outlets #transferButton:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+@media (min-width: 801px) {
+  #page-outlets #transferButton {
+    width: auto;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. PENGGUNA — kepala kartu "Akun Terdaftar" + hint
+   "Klik akun untuk rincian akses" (dibuat JS di renderUsers).
+   -------------------------------------------------------------------------- */
+#page-users .users-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+#page-users .users-card-title {
+  margin: 0;
+  color: #0f2544;
+  font-family: "Plus Jakarta Sans", Inter, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-users .users-card-hint {
+  flex: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

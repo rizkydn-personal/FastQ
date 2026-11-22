@@ -31,7 +31,7 @@
     .product-image-editor{display:flex;align-items:center;gap:12px}
     .product-image-controls{display:grid;flex:1;min-width:0;gap:8px}
     .product-image-controls input{height:auto;min-height:40px;padding:7px}
-    .product-card-wrap>.favorite-toggle{top:3px;left:50px;right:auto;width:32px;height:32px;min-width:32px;min-height:32px}
+    .product-card-wrap>.favorite-toggle{top:3px;left:50px;right:auto;width:44px;height:44px;min-width:44px;min-height:44px}
     @media(max-width:380px){.product-image-frame{width:50px;height:50px;flex-basis:50px}.product-card-wrap>.favorite-toggle{left:44px}}
 
 /* Account screens use the original POS controls; no global visual overrides. */
@@ -201,7 +201,7 @@
   .product-card { min-height:76px; padding:6px; gap:7px; }
   .product-name { padding-right:0; overflow-wrap:anywhere; line-height:1.25; }
   .product-meta { flex-direction:row; align-items:center; gap:4px; }
-  .favorite-toggle { width:32px; min-width:32px; height:32px; min-height:32px; top:3px; }
+  .favorite-toggle { width:44px; min-width:44px; height:44px; min-height:44px; top:3px; }
   .cart-head { flex-wrap:wrap; gap:12px; }
   .cart-actions { width:100%; margin-left:0; }
   .cart-actions .button { flex:1; min-height:48px; }
@@ -342,7 +342,14 @@
     #page-pos .cart-panel { flex:0 1 auto; height:auto; }
   }
 }
-#discountButton { display:none !important; }
+/* Tombol Diskon di header keranjang: disembunyikan HANYA di layar kecil
+   (<=800px) — di HP jalur resminya lewat Preview keranjang -> Diskon.
+   Di desktop tombol ini jalan masuk diskonnya (modal "Diskon transaksi",
+   onclick=discountModal di 11-product-import-export.js); menyembunyikannya
+   di semua lebar membuat desktop tidak punya jalan masuk diskon sama sekali.
+   Peran yang boleh memakai diskon mengikuti siapa saja yang bisa membuka
+   halaman kasir (Kasir + Admin); modalnya sendiri tidak punya gate peran. */
+@media (max-width:800px){ #discountButton { display:none !important; } }
 .discount-approval-table-wrap { max-width:100%; overflow-x:auto; }
 .discount-approval-table-wrap table { min-width:720px; }
 .discount-approval-status { min-width:150px; white-space:normal; }
@@ -823,7 +830,7 @@ html,body,.shell { background:#F4F6FA; }
     .product-grid[data-view="grid"] .favorite-toggle { top:10px; right:10px; transform:none; }
   }
 }
-.product-grid[data-view] .product-name { display:block; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; overflow-wrap:normal; }
+.product-grid[data-view="list"] .product-name { display:block; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; overflow-wrap:normal; }
 .product-grid[data-view="grid"] .product-card { height:auto; aspect-ratio:auto; justify-content:flex-start; }
 .product-grid[data-view="grid"] .product-image-frame { height:clamp(96px,21vw,160px); min-height:0; aspect-ratio:auto; flex:0 0 auto; overflow:hidden; }
 .product-grid[data-view="grid"] .product-image-thumb { width:100%; height:100%; object-fit:contain; }
@@ -1095,4 +1102,487 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .report-summary-split { grid-template-columns:minmax(260px,.7fr) minmax(0,1.3fr); }
 @media(max-width:800px) {
   .report-summary-split { grid-template-columns:minmax(0,1fr); }
+}
+
+/* ==========================================================================
+   FastQ UI polish — ui-ux-pro-max skill (2026-11-21)
+   Aturan: kontras teks >= 4.5:1, target sentuh >= 44px (48px coarse pointer),
+   teks informasi minimal 11px (body minimal 12px), tanpa horizontal scroll,
+   ritme spacing 8px, konten tidak tertutup bottom-nav / toast di HP.
+   Blok ini sengaja di akhir file agar menang atas aturan legacy di atas.
+   ========================================================================== */
+
+/* --- Layar akun (login / daftar kasir): target 48px, kartu lebih lega --- */
+.account-gate { padding: 24px 16px; }
+.account-card { width: min(440px, 100%); padding: 28px; box-shadow: 0 12px 32px rgba(11, 42, 91, .10); }
+.account-card .field { min-height: 48px; }
+.account-card .button { min-height: 48px; }
+.account-card label { font-size: 14px; }
+.account-card > p { color: #334155; line-height: 1.6; }
+.account-result { width: min(440px, calc(100% - 32px)); padding: 28px; }
+@media (max-width: 480px) {
+  .account-gate { padding: 16px 12px; }
+  .account-card { padding: 20px; }
+  .account-card h1 { font-size: 24px; margin: 12px 0; }
+}
+
+/* --- Teks kecil dinaikkan ke minimal 11px (skill: body < 12px dihindari) --- */
+.sync-pill:after { font-size: 11px; }
+.product-donut-svg .product-donut-caption { font-size: 11px; }
+#page-reports .report-count-value small { font-size: 11px; }
+.product-donut-copy strong { font-size: 11px; }
+.product-donut-copy small { font-size: 11px; }
+.report-mobile-cards td:not(:first-child)::before { font-size: 11px; }
+.report-mobile-sales td:first-child .hint { font-size: 11px; }
+.mobile-cart-link { font-size: 12px; }
+#page-shift .cash-table-wrap td:nth-child(4) { font-size: 11px; }
+
+/* --- Toast tidak tertutup bottom-nav di HP: pill ringkas di tengah --- */
+@media (max-width: 800px) {
+  .toast {
+    left: 50%; right: auto;
+    transform: translate(-50%, 8px);
+    width: max-content; max-width: calc(100% - 32px);
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+  }
+  .toast.show { transform: translate(-50%, 0); }
+}
+
+/* --- Gambar tidak pernah meluber dari kartunya --- */
+.shell img { max-width: 100%; }
+.product-image-frame img, .product-image-preview img { max-width: 100%; height: auto; }
+
+/* --- Sentuh: aturan pointer:coarse di AKHIR file agar menang atas aturan
+       <=800px sebelumnya (audit menemukan tombol laporan/kas/qty kalah cascade) --- */
+@media (pointer: coarse) {
+  .button, .chip, .mini-action, .qty-controls button, .nav-link, .method-tab, .favorite-toggle { min-height: 48px; }
+  .qty-controls, .qty-controls button { height: 48px; }
+  .qty-controls input { height: 44px; }
+  .button.small { min-height: 48px; }
+  /* toolbar laporan & tombol kas yang tadinya 30-34px */
+  #page-reports .toolbar select, #page-reports .toolbar input, #page-reports .toolbar .button,
+  #page-reports .report-chart-switch button, [data-cash], .heading-actions .button { min-height: 44px; }
+}
+/* iOS Safari auto-zoom bila font input < 16px — naikkan di layar sentuh/kecil */
+@media (max-width: 800px) {
+  .field, input, select, textarea { font-size: 16px; }
+  .field::placeholder, input::placeholder, textarea::placeholder { color: #667085; }
+}
+
+/* --- Modal & dropdown aman di layar 320-360px --- */
+@media (max-width: 400px) {
+  .modal-backdrop { padding: 12px; }
+  .modal-head, .modal-body { padding-left: 16px; padding-right: 16px; }
+  .modal-foot { flex-wrap: wrap; }
+  .modal-foot .button { flex: 1 1 100%; }
+}
+
+/* ==========================================================================
+   FastQ UI polish — ronde 2: kasir / keranjang / checkout / laporan / shift
+   ui-ux-pro-max (2026-11-21). Aturan: target sentuh >= 44px (48px di layar
+   sentuh, dipertahankan lewat pointer:coarse yang sudah ada), teks >= 11px
+   (body >= 12px), kontras teks sekunder #475569 (7,58:1), ritme 8px,
+   angka rupiah tabular-nums. Blok ini di akhir file agar menang cascade.
+   ========================================================================== */
+
+/* --- 1. Grid & kartu produk (kasir) --- */
+.product-card { border-width: 1.5px; transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease; }
+.product-card:hover { box-shadow: 0 4px 14px rgba(11, 46, 107, .10); }
+.product-card.in-cart { border-color: #1D4ED8; border-width: 2px; background: #EFF4FF; box-shadow: 0 4px 14px rgba(29, 78, 216, .14); }
+.product-name { font-size: 15px; font-weight: 600; line-height: 1.35; color: #1F2937; }
+.product-price { font-size: 15px; font-weight: 700; color: #0B2E6B; font-variant-numeric: tabular-nums; }
+.product-stock { font-size: 12px; color: #475569; }
+.product-meta { gap: 6px; }
+.product-qty-badge { min-width: 22px; height: 22px; font-size: 12px; font-weight: 700; line-height: 22px; }
+.product-card-wrap > .favorite-toggle { border-radius: 12px; }
+.product-card-wrap > .favorite-toggle svg { width: 20px; height: 20px; }
+.category-picker-trigger { min-height: 44px; font-size: 14px; }
+.product-view-toggle { min-width: 44px; min-height: 44px; }
+
+/* --- 2. Panel keranjang --- */
+.cart-lines { flex: 1 1 auto; }
+.cart-item { padding: 14px 2px; gap: 10px; }
+.cart-item-name { font-size: 15px; font-weight: 600; line-height: 1.35; color: #1F2937; }
+.cart-item-price { font-size: 14px; font-weight: 700; color: #0B2E6B; font-variant-numeric: tabular-nums; }
+.cart-sub { font-size: 12px; color: #475569; }
+.qty-controls input { width: 48px; font-size: 15px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.remove-item { min-width: 48px; min-height: 48px; font-size: 18px; color: #667085; }
+.cart-empty { padding: 28px 16px; text-align: center; color: #475569; font-size: 14px; line-height: 1.6; }
+.cart-summary { padding: 16px 18px; }
+.summary-row { font-size: 14px; line-height: 1.6; color: #34415A; }
+.summary-row strong { font-variant-numeric: tabular-nums; }
+.summary-total { padding-top: 12px; border-top: 1px solid #E9EDF3; }
+.summary-total strong { font-size: 26px; font-variant-numeric: tabular-nums; }
+.pay-button { min-height: 52px; font-size: 16px; font-weight: 700; border-radius: 12px; }
+.mobile-pay-button { font-size: 16px; }
+.mobile-cart-link { font-size: 14px; }
+.shift-warning { padding: 12px 14px; font-size: 13px; line-height: 1.5; gap: 10px; }
+.shift-warning .button { min-height: 44px; }
+
+/* --- 3. Modal pembayaran / checkout --- */
+.modal-head { padding: 18px 20px; }
+.modal-head h2 { font-size: 18px; }
+.modal-close { min-width: 48px; min-height: 48px; font-size: 22px; }
+.modal-body { padding: 20px; }
+.modal-foot { padding: 16px 20px; gap: 10px; }
+.modal-foot .button { min-height: 52px; font-size: 15px; }
+.pay-amount { padding: 16px; border-radius: 14px; }
+.pay-amount span { font-size: 14px; color: #475569; }
+.pay-amount strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+.quick-cash button { min-height: 44px; padding: 0 14px; font-size: 14px; border-radius: 10px; }
+.method-tab { min-height: 48px; font-size: 15px; }
+.change-box { padding: 14px 16px; }
+.change-box strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.modal-body .field, .modal-body select, .modal-body textarea { font-size: 16px; line-height: 1.5; }
+.split-line input, .split-line select { min-height: 44px; }
+.cart-preview-line { padding: 10px 0; }
+.cart-preview-item strong { font-size: 14px; }
+
+/* --- 4. Laporan: stat, grafik, tabel --- */
+.stat { padding: 18px 20px; }
+.stat-label { font-size: 13px; color: #475569; }
+.stat-value { letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.stat-note { font-size: 12px; line-height: 1.5; }
+.report-chart-card { padding: 20px; }
+.panel-title { font-size: 16px; }
+th { font-size: 12px; letter-spacing: .05em; color: #475569; padding: 12px 14px; }
+td { font-size: 14px; line-height: 1.55; padding: 12px 14px; color: #34415A; }
+.status { min-height: 28px; display: inline-flex; align-items: center; padding: 4px 12px; font-size: 12px; }
+.report-chart-switch button { min-height: 44px; padding: 0 16px; font-size: 14px; }
+.report-chart-toolbar label { font-size: 13px; color: #475569; }
+.report-chart-toolbar .field { min-height: 44px; }
+.report-chart-empty { font-size: 14px; color: #475569; min-height: 200px; }
+.report-mobile-cards td { padding: 14px 16px; }
+.product-donut-copy { line-height: 1.45; }
+.product-donut-copy strong { font-size: 13px; }
+.product-donut-copy small { color: #475569; }
+.report-summary-block { padding: 16px 0; }
+
+/* --- 5. Shift & kas --- */
+.shift-banner { padding: 20px; }
+.shift-metrics strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.shift-metrics span { font-size: 13px; color: #475569; }
+.shift-copy-row span { font-size: 14px; }
+[data-cash] { min-height: 48px; padding: 0 16px; font-size: 14px; }
+.shift-close-button, #page-shift .shift-banner > button { min-height: 48px; }
+.cash-table-wrap td { padding: 12px 14px; font-size: 14px; }
+.cash-mobile-item { padding: 16px; }
+.cash-mobile-amount { font-size: 16px; font-variant-numeric: tabular-nums; }
+#shiftHistoryDate { min-height: 48px; font-size: 16px; }
+
+/* --- 6. Halaman produk & toolbar umum --- */
+.inventory-mobile-item { padding: 16px; gap: 10px; }
+.inventory-mobile-product strong { font-size: 15px; line-height: 1.35; }
+.inventory-mobile-product span { font-size: 12px; color: #475569; }
+.inventory-mobile-summary { font-size: 13px; line-height: 1.5; }
+.inventory-action-trigger { min-height: 44px; padding: 0 14px; font-size: 14px; }
+.toolbar { gap: 10px; }
+.toolbar .button, .toolbar select { min-height: 44px; }
+.heading-actions .button { min-height: 44px; }
+.page-heading p { font-size: 14px; line-height: 1.55; color: #475569; }
+
+/* --- 7. Empty state & keterbacaan umum --- */
+.empty { padding: 40px 20px; font-size: 14px; color: #475569; line-height: 1.6; text-align: center; }
+.empty-row { padding: 20px; color: #475569; }
+
+/* --- 8. Target sentuh 44px di perangkat pointer halus (layar sentuh tetap
+       48px lewat blok pointer:coarse di atas — aturan ini tidak menurunkannya) --- */
+@media (pointer: fine) {
+  .button { min-height: 44px; }
+  .button.small { min-height: 44px; }
+  .chip { min-height: 44px; padding: 0 16px; font-size: 14px; }
+  .mini-action { min-height: 44px; padding: 0 12px; font-size: 13px; }
+  .qty-controls button { width: 44px; height: 44px; min-height: 44px; font-size: 18px; }
+  .qty-controls { height: 44px; }
+  .qty-controls input { height: 44px; }
+  .nav-link { min-height: 44px; }
+  .method-tab { min-height: 44px; }
+  .favorite-toggle { min-width: 44px; min-height: 44px; }
+}
+
+/* --- 9. Kepadatan desktop: kartu & panel lebih lega, tanpa ubah mobile --- */
+@media (min-width: 801px) {
+  .product-card { padding: 14px; gap: 10px; }
+  .product-grid { gap: 12px; }
+  .cart-item { padding: 16px 2px; }
+  .catalog-toolbar { padding: 16px 18px; }
+  .category-row { padding: 14px 18px 6px; }
+  .stat-value { font-size: 26px; }
+}
+
+/* ==========================================================================
+   FastQ UI polish — ronde 2b: arah desain pemilik repo (DESIGN-DIRECTION.md)
+   Ringkas, nyaman, bersih; palet terkendali (biru primer + netral, tanpa
+   warna bersaing); HAPUS ornamen ceklis & detail tempelan; ikon line modern
+   yang konsisten ukurannya. Blok ini di akhir file agar menang cascade.
+   ========================================================================== */
+
+/* --- A. Hapus ornamen ceklis / elipsis / seru pada badge status --- */
+.status::before, .status.pending::before, .status.danger::before { content: none; }
+.status { gap: 0; }
+/* Sembunyikan ceklis teks pada opsi kategori terpilih — state aktif sudah
+   jelas dari latar biru + teks navy tebal (.category-picker-option.active). */
+.category-picker-option span[aria-hidden="true"] { display: none; }
+.category-picker-option { min-height: 44px; }
+
+/* --- B. Perbaiki aturan yang KALAH spesifisitas di ronde sebelumnya ---
+       (aturan ID di tengah file menimpa perbaikan 44px sebelumnya) */
+#page-reports .heading-actions .button { min-height: 44px; padding: 10px 12px; font-size: 14px; }
+#page-reports > .toolbar select,
+#page-reports > .toolbar input,
+#page-reports .report-chart-toolbar .field,
+#page-reports .report-chart-switch .button { min-height: 44px; height: 44px; padding: 0 12px; font-size: 14px; }
+#page-shift .section-split > .panel:first-child [data-cash] { min-height: 44px; height: 44px; padding: 0 16px; font-size: 14px; }
+
+/* --- C. Seimbangkan warna: aksi sekunder netral, biru hanya untuk aksi
+       primer & state terpilih — jangan banyak biru bersaing di satu layar --- */
+.heading-actions .button:not(.primary) { background: #FFFFFF; border-color: #D9E0EC; color: #34415A; }
+.heading-actions .button:not(.primary):hover { background: #F5F7FB; }
+.toolbar .button:not(.primary) { background: #FFFFFF; border-color: #D9E0EC; color: #34415A; }
+.product-view-toggle button { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+.product-view-toggle { height: 44px; }
+
+/* --- D. Ikon line modern yang konsisten (ukuran + ketebalan) --- */
+.sidebar .nav-link svg { width: 22px; height: 22px; }
+.topbar svg { width: 20px; height: 20px; }
+.search-wrap svg { width: 18px; height: 18px; }
+.product-image-frame svg { width: 28px; height: 28px; color: #94A3B8; }
+.button svg, .mini-action svg { width: 18px; height: 18px; }
+.sidebar .nav-link svg, .topbar svg, .button svg, .search-wrap svg,
+.product-view-toggle svg { stroke-width: 1.8; }
+
+/* ==========================================================================
+   FastQ UI polish — ronde 2c: temuan tes role (00:11 WIB) + arah desain
+   1) Navigasi mobile: tombol "Lainnya" kembali tampil di bottom bar.
+   2) "Tahan transaksi" netral (aturan ID lama #page-pos ... :first-child
+      bikin biru; override sama-spesifik di akhir file menang).
+   3) Sync-pill topbar jadi teks + ikon tanpa kotak pill.
+   ========================================================================== */
+
+/* --- 1. Bottom bar mobile: tampilkan "Lainnya" (5 item: Kasir, Shift,
+       Absen, Laporan, Lainnya) — Produk/Outlet/Pengguna tetap di modal.
+       Bar bawah adalah grid 4 kolom (polish.css:59) — tanpa ini item ke-5
+       jatuh ke baris kedua yang terpotong. --- */
+@media (max-width: 800px) {
+  .sidebar .mobile-more { display: flex !important; }
+  .shell .sidebar { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* --- 2. Aksi sekunder kasir netral, biru hanya untuk Bayar. --- */
+#page-pos .heading-actions .button:first-child { border-color: #D9E0EC; color: #34415A; }
+
+/* --- 3. Sync-pill: tanpa border/latar/radius/shadow — ikon + teks saja.
+       State tetap kebaca lewat label (LOKAL/OK/OFF/SYNC/TUNDA/CEK) dan
+       warna ikon (merah = error, kuning = offline). --- */
+.topbar .sync-pill { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+
+/* ==========================================================================
+   FastQ Kasir - samakan dengan referensi Rnp Store (2026-11-22)
+   Sumber kebenaran visual: ~/workspace/fastq-audit/reference-kasir-rnp-store.png
+   (780x1688 px = skala 2x dari 390px CSS). Warna: navy #0B2A5B,
+   biru primer #1D4ED8, biru muda aktif #DBEAFE, sekunder #667085,
+   latar #F4F6FA, kartu #FFFFFF, divider #EDF1F7.
+   ========================================================================== */
+
+/* --- 0. Ikon pengganti (mask) untuk SVG di index.html yang di luar scope:
+       logo keranjang, refresh merah, struk Kasir, jam Shift.
+       Mask mengikuti currentColor (biru saat aktif, abu saat pasif). --- */
+.topbar .brand-mark { background:#1D4ED8; display:grid; place-items:center; overflow:hidden; }
+.topbar .brand-mark img { display:none; }
+.topbar .brand-mark::before { content:""; width:22px; height:22px; background:#FFFFFF;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M1%201h4l2.68%2013.39a2%202%200%200%200%202%201.61h9.72a2%202%200%200%200%202-1.61L23%206H6%27%2F%3E%3Ccircle%20cx%3D%279%27%20cy%3D%2721%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2721%27%20r%3D%271%27%2F%3E%3C%2Fsvg%3E"); -webkit-mask-size:contain; -webkit-mask-position:center; -webkit-mask-repeat:no-repeat;
+  mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M1%201h4l2.68%2013.39a2%202%200%200%200%202%201.61h9.72a2%202%200%200%200%202-1.61L23%206H6%27%2F%3E%3Ccircle%20cx%3D%279%27%20cy%3D%2721%27%20r%3D%271%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2721%27%20r%3D%271%27%2F%3E%3C%2Fsvg%3E"); mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
+.sidebar .nav-link[data-page="pos"] svg, .sidebar .nav-link[data-page="shift"] svg { display:none; }
+.sidebar .nav-link[data-page="pos"]::before, .sidebar .nav-link[data-page="shift"]::before {
+  content:""; flex:none; width:20px; height:20px; background:currentColor;
+  -webkit-mask-size:contain; -webkit-mask-position:center; -webkit-mask-repeat:no-repeat;
+  mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
+.sidebar .nav-link[data-page="pos"]::before {
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4%202v20l2-1%202%201%202-1%202%201%202-1%202%201%202-1%202%201V2l-2%201-2-1-2%201-2-1-2%201-2-1-2%201Z%27%2F%3E%3Cpath%20d%3D%27M8%207h8%27%2F%3E%3Cpath%20d%3D%27M8%2011h8%27%2F%3E%3Cpath%20d%3D%27M8%2015h5%27%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4%202v20l2-1%202%201%202-1%202%201%202-1%202%201%202-1%202%201V2l-2%201-2-1-2%201-2-1-2%201-2-1-2%201Z%27%2F%3E%3Cpath%20d%3D%27M8%207h8%27%2F%3E%3Cpath%20d%3D%27M8%2011h8%27%2F%3E%3Cpath%20d%3D%27M8%2015h5%27%2F%3E%3C%2Fsvg%3E"); }
+.sidebar .nav-link[data-page="shift"]::before {
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%2710%27%2F%3E%3Cpath%20d%3D%27M12%206v6l4%202%27%2F%3E%3C%2Fsvg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%2710%27%2F%3E%3Cpath%20d%3D%27M12%206v6l4%202%27%2F%3E%3C%2Fsvg%3E"); }
+
+/* --- 1. Top bar: logo kotak biru + FastQ tebal navy + nama toko abu --- */
+.topbar .brand-name { font-size:20px; font-weight:800; color:#0B2A5B; letter-spacing:-.01em; }
+.topbar .mobile-header-menu { color:#0B2A5B; }
+.topbar .mobile-header-menu svg { stroke-width:2; }
+@media (max-width:800px) {
+  .topbar .brand-mark { width:32px; height:32px; border-radius:9px; }
+  .topbar .brand-mark::before { width:20px; height:20px; }
+  .topbar .brand { grid-template-columns:32px minmax(0,1fr); column-gap:10px; }
+  .topbar .mobile-store-name { font-size:15px; color:#667085; }
+  /* refresh merah saja, tanpa teks pill */
+  .topbar .sync-pill { width:48px; min-width:48px; height:48px; padding:0; justify-content:center; color:#DC2626; }
+  .topbar .sync-pill .header-sync-icon { display:none; }
+  .topbar .sync-pill::after, .topbar .sync-pill[data-state]::after { display:none; }
+  .topbar .sync-pill::before { content:""; width:24px; height:24px; flex:none; background:currentColor;
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M21%2012a9%209%200%201%201-9-9c2.52%200%204.93%201%206.74%202.74L21%208%27%2F%3E%3Cpath%20d%3D%27M21%203v5h-5%27%2F%3E%3C%2Fsvg%3E"); -webkit-mask-size:contain; -webkit-mask-position:center; -webkit-mask-repeat:no-repeat;
+    mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M21%2012a9%209%200%201%201-9-9c2.52%200%204.93%201%206.74%202.74L21%208%27%2F%3E%3Cpath%20d%3D%27M21%203v5h-5%27%2F%3E%3C%2Fsvg%3E"); mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
+  .topbar .sync-pill[data-state="offline"] { color:#B54708; }
+  .topbar .sync-pill[data-state="syncing"]::before { animation:account-spin .8s linear infinite; }
+}
+@media (min-width:801px) {
+  .topbar .brand-mark { width:36px; height:36px; border-radius:10px; }
+  .topbar .brand-mark::before { width:22px; height:22px; }
+}
+@media (prefers-reduced-motion:reduce) { .topbar .sync-pill::before { animation:none; } }
+
+/* --- 2. Judul Kasir besar + tanggal di samping + pill Tahan --- */
+#page-pos .page-heading { flex-direction:row; align-items:center; }
+#page-pos .page-heading > div:first-child { display:flex; align-items:baseline; gap:10px; min-width:0; flex:1 1 auto; }
+#page-pos .page-heading h1 { font-size:36px; font-weight:800; color:#0B2A5B; letter-spacing:-.02em; line-height:1.1; flex:none; }
+#page-pos .page-heading p { font-size:16px; color:#667085; white-space:nowrap; margin:0; }
+#page-pos .heading-actions { display:flex; flex:none; width:auto; margin-left:0; }
+#page-pos #holdTransaction { display:inline-flex; align-items:center; gap:8px; height:36px; min-height:36px; padding:0 16px; border:1.5px solid #1D4ED8; border-radius:18px; background:#FFFFFF; color:#1D4ED8; font-size:16px; font-weight:700; }
+#page-pos #holdTransaction::before { content:""; width:10px; height:14px; border-left:3px solid currentColor; border-right:3px solid currentColor; flex:none; }
+
+/* --- 3. Search 48px rounded + tombol scan 48px --- */
+#page-pos .catalog-toolbar { border-bottom:0; }
+#page-pos .search-wrap input { height:48px; min-height:48px; border-radius:16px; font-size:16px; border-color:#D9E0EC; }
+#page-pos .search-wrap input::placeholder { color:#667085; }
+#page-pos .search-wrap svg { width:22px; height:22px; left:14px; top:50%; transform:translateY(-50%); color:#667085; }
+#page-pos #cameraScanButton { width:48px; min-width:48px; height:48px; min-height:48px; border-radius:16px; background:#FFFFFF; border-color:#D9E0EC; color:#0B2A5B; }
+#page-pos #cameraScanButton svg { width:24px; height:24px; }
+@media (max-width:800px) {
+  #page-pos .catalog-toolbar .search-wrap { flex:1 1 auto; min-width:0; }
+  #page-pos .catalog-toolbar #cameraScanButton { flex:none; }
+}
+
+/* --- 4. Kategori 48px + toggle list/grid (aktif biru muda) --- */
+#page-pos .category-row { gap:8px; }
+#page-pos .category-picker-trigger { height:48px; min-height:48px; border-radius:16px; border-color:#D9E0EC; color:#0B2A5B; }
+#page-pos .category-picker-trigger > span { font-size:15px; color:#667085; }
+#page-pos .category-picker-trigger > strong { font-size:16px; font-weight:700; color:#0B2A5B; }
+#page-pos .category-picker-trigger svg { width:18px; height:18px; }
+#page-pos .product-view-toggle { height:48px; border-radius:16px; border-color:#D9E0EC; padding:2px; align-items:center; }
+#page-pos .product-view-toggle button { width:44px; min-width:44px; height:44px; min-height:44px; color:#667085; border-radius:12px; }
+#page-pos .product-view-toggle button.active { background:#DBEAFE; box-shadow:none; color:#1D4ED8; }
+#page-pos .product-view-toggle svg { width:22px; height:22px; }
+
+/* --- 5. Daftar produk: satu kartu putih, baris ber-divider hairline --- */
+#page-pos .product-grid[data-view="list"] { gap:0; padding:0; }
+#page-pos .product-grid[data-view="list"] .product-card { border:0; border-radius:0; background:transparent; box-shadow:none; min-height:62px; padding:6px 12px; gap:12px; }
+#page-pos .product-grid[data-view="list"] .product-card:hover { background:#F8FAFF; border-color:transparent; }
+#page-pos .product-grid[data-view="list"] .product-card.in-cart { background:#EFF4FF; border:0; box-shadow:none; }
+#page-pos .product-grid[data-view="list"] .product-card-wrap:not(:first-child) .product-card { border-top:1px solid #EDF1F7; }
+#page-pos .product-grid[data-view="list"] .product-card-content { gap:4px; padding-right:36px; }
+#page-pos .product-grid[data-view="list"] .favorite-toggle { top:20px; }
+#page-pos .product-name { color:#0B2A5B; font-weight:700; }
+#page-pos .product-price { color:#1D4ED8; font-weight:700; }
+#page-pos .product-stock::before { content:"\00B7"; margin-right:6px; color:#98A2B3; }
+#page-pos .product-meta { gap:6px; }
+#page-pos .favorite-toggle { color:#94A3B8; }
+#page-pos .favorite-toggle.active { color:#1D4ED8; }
+#page-pos .favorite-toggle svg { width:24px; height:24px; }
+#page-pos .product-image-frame { border:0; background:#F1F5F9; }
+#page-pos .product-image-placeholder svg { width:26px; height:26px; color:#94A3B8; }
+@media (max-width:800px) {
+  #page-pos .product-grid[data-view="list"] { background:#FFFFFF; border:1px solid #E3E8F0; border-radius:20px; overflow:hidden; }
+  #page-pos .product-image-frame { width:50px; height:50px; flex-basis:50px; border-radius:10px; }
+  #page-pos .product-name { font-size:19px; }
+  #page-pos .product-price { font-size:18px; }
+  #page-pos .product-stock { font-size:16px; color:#667085; }
+  #page-pos .product-meta { align-items:baseline; }
+}
+@media (min-width:801px) {
+  #page-pos .product-grid[data-view="list"] { grid-template-columns:minmax(0,1fr); padding:4px 8px 16px; }
+  #page-pos .catalog { border-radius:20px; }
+  #page-pos .catalog-toolbar { padding:16px 16px 12px; }
+  #page-pos .product-image-frame { width:56px; height:56px; flex-basis:56px; border-radius:10px; }
+  #page-pos .product-name { font-size:17px; }
+  #page-pos .product-price { font-size:16px; }
+  #page-pos .product-stock { font-size:14px; color:#667085; }
+  #page-pos .product-meta { align-items:baseline; }
+}
+
+/* --- 6. Bottom nav: bar penuh bawah, pill aktif biru muda --- */
+@media (max-width:800px) {
+  .shell .sidebar { display:flex; left:0; right:0; bottom:0; height:calc(60px + env(safe-area-inset-bottom)); padding:4px 8px calc(4px + env(safe-area-inset-bottom)); border:0; border-top:1px solid #E3E8F0; border-radius:0; background:#FFFFFF; box-shadow:none; backdrop-filter:none; justify-content:space-around; gap:2px; overflow:visible; }
+  .shell .sidebar .nav-link { flex:1 1 0; min-width:0; height:52px; min-height:52px; padding:4px 2px; font-size:13px; border-radius:12px; }
+  .shell .sidebar .nav-link.active { background:#DBEAFE; border:0; color:#1D4ED8; }
+  .shell .sidebar .nav-link:not(.active) { color:#667085; }
+  .shell .sidebar .nav-link svg { width:22px; height:22px; }
+  .sidebar .nav-link[data-page="pos"]::before, .sidebar .nav-link[data-page="shift"]::before { width:22px; height:22px; }
+}
+
+@media (max-width:800px) {
+  /* rapatkan tumpukan judul+search+kategori ke referensi (divider pertama di ~280px) */
+  #page-pos .page-heading { margin-bottom:2px; }
+  #page-pos .catalog-toolbar { padding:0 0 6px; }
+  #page-pos .category-row { padding:0; }
+}
+
+@media (max-width:800px) {
+  /* Topbar 64px -> 56px seperti referensi (baris 57-58 polish.css).
+     Mengubah tinggi topbar mobile global (dipakai semua halaman legacy). */
+  .shell { grid-template-rows:calc(56px + env(safe-area-inset-bottom)) minmax(0,1fr); }
+  .topbar { height:calc(56px + env(safe-area-inset-bottom)); }
+}
+
+/* ==========================================================================
+   RONDE 2 — Kasir lebih lega, rapih, bersih, seimbang (2026-11-22)
+   Pemilik repo: ronde 1 "jelek, bedanya jauh banget" dari referensi.
+   KOREKSI UKURAN 2026-11-22 ~01:12 WIB: ronde 2 kebesaran (thumb 64px,
+   min-height 80px, teks 20/18/16, pitch 81px) — cuma muat 7 baris/layar.
+   Angka di bawah TERUKUR dari gambar referensi (780x1688 @2x, bagi 2):
+   pitch 65px, thumb 46px, nama 15px, harga 13px, stok 13px
+   (cap-height: nama 10.5px -> fs ~14.6; harga/stok 9.5px -> fs ~13.2).
+   Referensi muat 8 baris/layar. Yang dipertahankan: latar #F1F5F9,
+   kartu radius 20px + bayangan lembut, margin samping 16px,
+   bottom nav 4 item untuk Kasir (tombol "Lainnya" disembunyikan via JS
+   di 06-shift-roles.js bila role tidak punya halaman tambahan).
+   ========================================================================== */
+
+/* --- 1. Latar halaman abu kebiruan agar kartu putih menonjol --- */
+:root { --surface:#F1F5F9; }
+body, .shell { background:#F1F5F9; }
+
+/* --- 2. Margin samping 16px di halaman kasir mobile (seperti referensi) --- */
+@media (max-width:800px) {
+  .shell:has(#page-pos.active) > main { padding-left:16px; padding-right:16px; }
+}
+
+/* --- 3. Kartu daftar produk: putih, radius 20, bayangan lembut --- */
+@media (max-width:800px) {
+  #page-pos .product-grid[data-view="list"] {
+    border:1px solid #E2E8F0;
+    box-shadow:0 1px 2px rgba(15,23,42,.05), 0 12px 32px -12px rgba(15,23,42,.14);
+  }
+}
+
+/* --- 4. Baris sesuai ukuran referensi (TERUKUR): pitch 65px
+       (min-height 65 — border 1px sudah termasuk via border-box;
+       min-height 64 memberi pitch 64, terverifikasi di build),
+       thumb 46px, teks 15/13/13 --- */
+#page-pos .product-grid[data-view="list"] .product-card {
+  min-height:65px; padding:8px 14px; gap:14px;
+}
+#page-pos .product-grid[data-view="list"] .product-card-content { gap:2px; padding-right:38px; }
+#page-pos .product-grid[data-view="list"] .product-image-frame {
+  width:46px; height:46px; flex-basis:46px; border-radius:10px;
+}
+#page-pos .product-grid[data-view="list"] .product-image-placeholder svg { width:22px; height:22px; }
+#page-pos .product-grid[data-view="list"] .product-name { font-size:15px; line-height:1.25; }
+#page-pos .product-grid[data-view="list"] .product-price { font-size:13px; }
+#page-pos .product-grid[data-view="list"] .product-stock { font-size:13px; }
+
+/* --- 5. "Lainnya" harus benar-benar hilang bila hidden (Kasir).
+       Mengalahkan .sidebar .mobile-more{display:flex!important} (baris 1358,
+       dari agen polish) yang mengabaikan atribut hidden; tanpa ini tombol
+       tetap tampil walau renderRole sudah menyembunyikannya. --- */
+.sidebar .mobile-more[hidden] { display:none !important; }
+
+/* --- Perbaikan verifikasi pasca-rebuild (2026-11-22): tombol Shift >= 44px.
+       Akar masalah: aturan lama di tengah file saling menimpa dengan
+       spesifisitas tinggi — .toolbar .button height:30px (baris ~932),
+       height:34px (baris ~1031), dan .shift-close-button min-height:38px
+       !important (baris ~914). Blok ini di akhir file dengan spesifisitas
+       lebih tinggi (1,5,0 untuk kas, 2,0,0 untuk Tutup shift) agar menang;
+       di layar sentuh tetap 48px lewat blok pointer:coarse di bawah. --- */
+#page-shift #closeShift { min-height:44px !important; height:44px; }
+#page-shift .section-split > .panel:first-child .toolbar .button[data-cash] { min-height:44px; height:44px; }
+@media (pointer:coarse) {
+  #page-shift #closeShift { min-height:48px !important; height:48px !important; }
+  #page-shift .section-split > .panel:first-child .toolbar .button[data-cash] { min-height:48px !important; height:48px !important; }
 }

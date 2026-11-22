@@ -1,5 +1,70 @@
-import { validateSalePayload } from './sale-policy.mjs';
+import { validateSalePayload, cashierDiscountViolation, lineDiscountRupiah } from './sale-policy.mjs';
 import { timestampMs } from './timestamp-utils.mjs';
+
+function stockMovementId(createHash, saleId, index) {
+  return createHash('sha256').update(`sale-stock:${saleId}:${index}`).digest('hex').slice(0, 32)
+    .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+}
+
+// Mengurangi stok secara atomik untuk transaksi baru (T3). Berjalan di dalam
+// transaksi sinkronisasi yang sama dengan penyimpanan transaksi, dengan baris
+// stock_balances dikunci FOR UPDATE sehingga dua perangkat tidak dapat menjual
+// stok terakhir secara bersamaan. Menolak bila stok tidak mencukupi; pergerakan
+// dicatat dengan alasan yang sama seperti stock.delta klien
+// (`Penjualan <nomor>`) agar event stock.delta yang datang belakangan dikenali
+// sebagai sudah diterapkan dan tidak mengurangi stok dua kali.
+async function decrementStockForSale({ client, sale, scope, productById, createHash }) {
+  const movements = [];
+  for (const [index, item] of sale.items.entries()) {
+    const variantId = item.variantId || null;
+    await client.query(
+      `INSERT INTO stock_balances(outlet_id,product_id,variant_id,quantity)
+       VALUES($1,$2,$3,0) ON CONFLICT(outlet_id,product_id,variant_id) DO NOTHING`,
+      [scope, item.productId, variantId],
+    );
+    const current = await client.query(
+      `SELECT quantity FROM stock_balances
+       WHERE outlet_id=$1 AND product_id=$2 AND variant_id IS NOT DISTINCT FROM $3 FOR UPDATE`,
+      [scope, item.productId, variantId],
+    );
+    const available = Number(current.rows[0]?.quantity || 0);
+    const nextQuantity = available - item.qty;
+    if (nextQuantity < -0.0000001) {
+      const product = productById.get(item.productId);
+      throw Object.assign(new Error(`Stok ${product?.name || 'produk'} tidak mencukupi (tersedia ${available}, diminta ${item.qty}).`), { status: 409, code: 'INSUFFICIENT_STOCK' });
+    }
+    await client.query(
+      `UPDATE stock_balances SET quantity=$4,updated_at=now()
+       WHERE outlet_id=$1 AND product_id=$2 AND variant_id IS NOT DISTINCT FROM $3`,
+      [scope, item.productId, variantId, Math.max(0, nextQuantity)],
+    );
+    movements.push({ id: stockMovementId(createHash, sale.id, index), productId: item.productId, variantId, delta: -item.qty });
+    if (variantId) {
+      await client.query(
+        `INSERT INTO stock_balances(outlet_id,product_id,variant_id,quantity)
+         VALUES($1,$2,NULL,0) ON CONFLICT(outlet_id,product_id,variant_id) DO NOTHING`,
+        [scope, item.productId],
+      );
+      await client.query(
+        `UPDATE stock_balances SET quantity=(
+           SELECT COALESCE(sum(balance.quantity),0) FROM stock_balances balance
+           JOIN product_variants variant ON variant.id=balance.variant_id
+           WHERE balance.outlet_id=$1 AND balance.product_id=$2
+             AND COALESCE((variant.metadata->>'retired')::boolean,FALSE)=FALSE
+         ),updated_at=now()
+         WHERE outlet_id=$1 AND product_id=$2 AND variant_id IS NULL`,
+        [scope, item.productId],
+      );
+    }
+  }
+  for (const movement of movements) {
+    await client.query(
+      `INSERT INTO stock_movements(id,outlet_id,product_id,variant_id,delta,reason,occurred_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO NOTHING`,
+      [movement.id, scope, movement.productId, movement.variantId, movement.delta, `Penjualan ${sale.number}`, sale.at],
+    );
+  }
+}
 
 export async function applySaleEvent({ client, event, scope, actor, deviceId, isUuid, createHash }) {
 
@@ -41,6 +106,18 @@ export async function applySaleEvent({ client, event, scope, actor, deviceId, is
   }
   const existingSale = await client.query('SELECT status,metadata,cashier_name,subtotal_rupiah,discount_rupiah,tax_rupiah,service_rupiah,total_rupiah FROM sales WHERE id=$1 AND outlet_id=$2 FOR UPDATE', [s.id, scope]);
   if (existingSale.rowCount && (Number(existingSale.rows[0].subtotal_rupiah) !== s.subtotal || Number(existingSale.rows[0].discount_rupiah) !== s.discount || Number(existingSale.rows[0].tax_rupiah) !== s.tax || Number(existingSale.rows[0].service_rupiah) !== s.service || Number(existingSale.rows[0].total_rupiah) !== s.total)) throw Object.assign(new Error('Nilai transaksi yang sudah tersimpan tidak dapat diubah.'), { status: 409 });
+  // T2: transaksi baru dari Kasir yang melampaui kewenangan diskon wajib
+  // tercatat sebagai permintaan persetujuan; transaksi yang sudah tersimpan
+  // (replay idempotent) tidak diperiksa ulang.
+  if (!existingSale.rowCount && actor.role === 'Kasir' && ['Lunas', 'Piutang'].includes(s.status)) {
+    const violation = cashierDiscountViolation(s);
+    if (violation) throw Object.assign(new Error(violation), { status: 403 });
+  }
+  // T3: kurangi stok secara atomik untuk transaksi baru yang lunas/piutang,
+  // sebelum baris transaksi ditulis. Transaksi Void/Dikembalikan tidak
+  // mengurangi stok di sini (pengembalian stok void ditangani lewat
+  // stock.delta `Void <nomor>` dari klien).
+  if (!existingSale.rowCount && ['Lunas', 'Piutang'].includes(s.status)) await decrementStockForSale({ client, sale: s, scope, productById, createHash });
   s.cashier = existingSale.rows[0]?.cashier_name || actor.name;
   let newPayments = s.payments;
   if (existingSale.rowCount) {
@@ -132,9 +209,7 @@ export async function applySaleEvent({ client, event, scope, actor, deviceId, is
       quantity: item.qty,
       unit_price_rupiah: Math.round(item.price),
       unit_cost_rupiah: Math.round(item.cost || 0),
-      discount_rupiah: item.discount?.kind === 'percent'
-        ? Math.round(item.price * item.qty * item.discount.value / 100)
-        : Math.min(item.price * item.qty, Math.round(item.discount?.value || 0)),
+      discount_rupiah: lineDiscountRupiah(item),
       note: item.note || null,
     }));
     const savedItems = await client.query(

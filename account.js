@@ -1,10 +1,6 @@
 window.installAccounts = async function ({ state, save, toast, modal, closeModal, esc, uid, hashCredential, setSession, bind, renderUsers, installSessionSync, syncHooks, openCartPreview }) {
   const { mergeStockSnapshot, prepareSyncOutbox, restoreActiveShift, switchOutletLocalState } = await import('./sync-policy.js');
   const shell = document.querySelector('.shell');
-  state.settings.tax = 0;
-  state.settings.taxEnabled = false;
-  state.settings.taxInclusive = false;
-  document.getElementById('taxLabel').closest('.summary-row').hidden = true;
   const mobile = matchMedia('(max-width:800px)');
   document.getElementById('mobileCartLink').onclick = openCartPreview;
   const more = document.getElementById('mobileHeaderMenu');
@@ -36,6 +32,7 @@ window.installAccounts = async function ({ state, save, toast, modal, closeModal
   const syncButton = document.getElementById('syncPill');
   syncButton.onclick = async () => {
     if (syncButton.disabled) return;
+    if (hasEventConflicts()) { openEventConflictModal(); return; }
     syncButton.disabled = true;
     syncButton.classList.add('sync-loading');
     syncButton.setAttribute('aria-busy', 'true');
@@ -78,7 +75,15 @@ window.installAccounts = async function ({ state, save, toast, modal, closeModal
   dropdown.addEventListener('focusout', event => { if (!dropdown.contains(event.relatedTarget) && event.relatedTarget !== more) closeDropdown(); });
   function mobileLabels() {
     closeDropdown();
-    (mobile.matches ? storePicker : outletContainer).append(outletSelect);
+    // Pindahkan select + wrapper custom-select-nya bersama-sama. Wrapper
+    // (div.custom-select-outlet, dibuat syncCustomSelect di
+    // 15-reports-charts.js) adalah sibling tepat setelah select; bila hanya
+    // select yang dipindah, wrapper tertinggal di container mobile yang
+    // tersembunyi dan picker outlet hilang setelah resize 390 -> 1440.
+    const target = mobile.matches ? storePicker : outletContainer;
+    target.append(outletSelect);
+    const outletWrapper = document.querySelector('.custom-select-outlet');
+    if (outletWrapper) target.append(outletWrapper);
     updateStoreName();
     document.querySelector('[data-page=products] .nav-text').textContent = mobile.matches ? 'Product' : 'Produk & stok';
     document.querySelector('[data-page=shift] .nav-text').textContent = mobile.matches ? 'Shift' : 'Shift & kas';
@@ -164,13 +169,14 @@ window.installAccounts = async function ({ state, save, toast, modal, closeModal
       lastSyncError = null;
       const issueIds = new Set(state.syncIssues.map(issue => issue.eventId));
       const remaining = state.syncOutbox.filter(event => event.outletId === outletId && pending.some(item => item.id === event.id) && !issueIds.has(event.id)).length;
-      const status = reviewCount ? `${reviewCount} permintaan diskon lama perlu ditinjau` : remaining ? `${remaining} event toko ini menunggu` : deferredCount ? `${deferredCount} event menunggu akun berwenang` : otherOutletCount ? `${otherOutletCount} event toko lain menunggu` : 'Tersinkron';
-      syncHooks.status(status, reviewCount || remaining || deferredCount || otherOutletCount ? 'pending' : 'synced');
+      const conflictCount = (state.syncIssues || []).filter(issue => issue.kind === 'event-conflict').length;
+      const status = conflictCount ? `${conflictCount} konflik sinkronisasi — ketuk untuk menyelesaikan` : reviewCount ? `${reviewCount} permintaan diskon lama perlu ditinjau` : remaining ? `${remaining} event toko ini menunggu` : deferredCount ? `${deferredCount} event menunggu akun berwenang` : otherOutletCount ? `${otherOutletCount} event toko lain menunggu` : 'Tersinkron';
+      syncHooks.status(status, conflictCount ? 'conflict' : reviewCount || remaining || deferredCount || otherOutletCount ? 'pending' : 'synced');
       if (newIssues.length) toast('Permintaan diskon lama tanpa transaksi yang cocok tetap tersimpan di perangkat dan tidak dikirim. Event lainnya tetap disinkronkan.');
       if (!logoutInProgress && (remaining || result.hasMore)) syncRetry = setTimeout(sessionSync, 1200);
     } catch (error) {
       lastSyncError = error;
-      if (error.conflict) { state.syncConflict = error.conflict; save(); }
+      if (error.conflict?.type === 'stock') { state.syncConflict = error.conflict; save(); }
       if (error.status === 409 && error.code === 'ACTIVE_SHIFT') {
         try {
           const latest = await request('/api/sync', 'POST', { deviceId: state.deviceId, cursor: state.syncCursor, activeShiftId: state.activeShift?.id || null, events: [] });
@@ -189,9 +195,27 @@ window.installAccounts = async function ({ state, save, toast, modal, closeModal
       const priceChanged = error.code === 'PRICE_CHANGED';
       const syncEventConflict = error.code === 'SYNC_EVENT_ID_CONFLICT';
       if (resyncRequired || priceChanged || syncEventConflict) syncBlockedError = error;
-      const statusMessage = resyncRequired ? 'Perangkat perlu sinkronisasi ulang' : priceChanged ? 'Harga transaksi perlu ditinjau' : error.code === 'ACTIVE_SHIFT' ? 'Shift outlet sudah aktif di server.' : error.status === 409 && !syncEventConflict ? 'Konflik stok. Periksa data sebelum sinkron ulang.' : 'Sinkronisasi gagal';
-      syncHooks.status(statusMessage, error.status === 409 ? 'conflict' : 'error');
-      if (!quiet) toast(resyncRequired ? `${error.message} Jangan hapus data lokal sebelum dipulihkan.` : error.message || 'Server tidak dapat dijangkau. Data tetap tersimpan di perangkat.');
+      if (syncEventConflict) {
+        // Catat konflik sebagai issue: prepareSyncOutbox mengesampingkan
+        // event ini dari batch berikutnya (event lain tetap tersinkron),
+        // dan pengguna mendapat jalan keluar lewat modal konflik —
+        // sebelumnya event macet selamanya di outbox dan logout diblokir.
+        const eventId = error.conflict?.eventId;
+        if (eventId) {
+          state.syncIssues = state.syncIssues || [];
+          if (!state.syncIssues.some(issue => issue.eventId === eventId && issue.kind === 'event-conflict')) {
+            state.syncIssues.push({ eventId, kind: 'event-conflict', message: error.message, storedEvent: error.conflict?.storedEvent || null, eventType: error.conflict?.eventType || null });
+            save();
+          }
+        }
+        syncHooks.status('Konflik sinkronisasi — ketuk untuk menyelesaikan', 'conflict');
+        if (!quiet) toast(error.message || 'ID event sudah dipakai untuk perubahan yang berbeda.');
+        if (manual || logoutInProgress) openEventConflictModal();
+      } else {
+        const statusMessage = resyncRequired ? 'Perangkat perlu sinkronisasi ulang' : priceChanged ? 'Harga transaksi perlu ditinjau' : error.code === 'ACTIVE_SHIFT' ? 'Shift outlet sudah aktif di server.' : error.status === 409 ? 'Konflik stok. Periksa data sebelum sinkron ulang.' : 'Sinkronisasi gagal';
+        syncHooks.status(statusMessage, error.status === 409 ? 'conflict' : 'error');
+        if (!quiet) toast(resyncRequired ? `${error.message} Jangan hapus data lokal sebelum dipulihkan.` : error.message || 'Server tidak dapat dijangkau. Data tetap tersimpan di perangkat.');
+      }
       if (error.status === 401 && !logoutInProgress) lock();
     } finally {
       syncing = false;
@@ -236,7 +260,12 @@ window.installAccounts = async function ({ state, save, toast, modal, closeModal
       const remaining = remainingIds.size;
       if (!remaining) return;
       const progressed = [...before].some(id => !remainingIds.has(id));
-      if (before.size && !progressed) throw new Error(`${remaining} data belum diterima database. Periksa koneksi, konflik, atau akses akun.`);
+      if (before.size && !progressed) {
+        const conflictCount = (state.syncIssues || []).filter(issue => issue.kind === 'event-conflict').length;
+        throw new Error(conflictCount
+          ? `${remaining} data belum diterima database. Ada konflik sinkronisasi — buka status sinkron untuk memilih Buang atau Kirim ulang.`
+          : `${remaining} data belum diterima database. Periksa koneksi, konflik, atau akses akun.`);
+      }
     }
     throw new Error('Sinkronisasi belum selesai dalam batas waktu. Data lokal tetap dipertahankan.');
   }
@@ -267,7 +296,71 @@ window.installAccounts = async function ({ state, save, toast, modal, closeModal
       shell.removeAttribute('aria-busy');
       logoutInProgress = false;
       toast(`Logout dibatalkan. ${error instanceof Error ? error.message : 'Data belum tersinkron.'}`);
+      if (hasEventConflicts()) openEventConflictModal();
     }
+  }
+  function hasEventConflicts() {
+    return (state.syncIssues || []).some(issue => issue.kind === 'event-conflict' && state.syncOutbox.some(event => event.id === issue.eventId));
+  }
+  function eventConflictLabel(event) {
+    const payload = event?.payload || {};
+    if (event?.type === 'sale.upsert') return `Transaksi ${payload.number || payload.id || ''}`;
+    if (event?.type === 'stock.delta' || event?.type === 'stock.reconcile') return `Stok · ${payload.reason || payload.productId || ''}`;
+    if (event?.type === 'discount.request') return `Permintaan diskon · ${payload.productName || payload.id || ''}`;
+    if (event?.type === 'discount.approval' || event?.type === 'discount.cancel') return `Keputusan diskon · ${payload.productName || payload.id || ''}`;
+    if (event?.type === 'product.upsert') return `Produk ${payload.name || payload.sku || payload.id || ''}`;
+    if (event?.type === 'product.delete') return `Hapus produk ${payload.sku || payload.id || ''}`;
+    if (event?.type === 'shift.upsert') return `Shift ${payload.id || ''}`;
+    if (event?.type === 'cash.upsert' || event?.type === 'cash.approval') return `Kas · ${payload.reason || payload.id || ''}`;
+    if (event?.type === 'transfer.upsert') return `Transfer stok ${payload.id || ''}`;
+    if (event?.type === 'customer.upsert') return `Pelanggan ${payload.name || payload.id || ''}`;
+    if (event?.type === 'attendance.upsert') return `Absensi ${payload.userName || payload.id || ''}`;
+    if (event?.type === 'audit.append') return `Audit · ${payload.action || payload.id || ''}`;
+    if (event?.type === 'outlet.upsert') return `Toko ${payload.name || payload.id || ''}`;
+    if (event?.type === 'receivable.payment') return `Pembayaran piutang ${payload.id || ''}`;
+    return `${event?.type || 'Perubahan'} ${payload.id || ''}`;
+  }
+  function openEventConflictModal() {
+    const issues = (state.syncIssues || []).filter(issue => issue.kind === 'event-conflict' && state.syncOutbox.some(event => event.id === issue.eventId));
+    if (!issues.length) return toast('Tidak ada konflik sinkronisasi.');
+    const rows = issues.map(issue => {
+      const event = state.syncOutbox.find(item => item.id === issue.eventId);
+      const canReissue = !!(event && event.payload && typeof event.payload.id === 'string');
+      return `<div class="detail-row"><span><strong>${esc(eventConflictLabel(event))}</strong><div class="hint">${esc(event?.type || '')} · ID event sudah dipakai server untuk perubahan berbeda.</div></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="button small" data-conflict-reissue="${esc(issue.eventId)}" ${canReissue ? '' : 'disabled title="Perubahan ini tidak dapat dikirim ulang dengan aman"'}>Kirim ulang</button><button class="button small danger" data-conflict-discard="${esc(issue.eventId)}">Buang</button></span></div>`;
+    }).join('');
+    modal('Konflik sinkronisasi', `<p>Server sudah menerima perubahan dengan ID yang sama, tapi isinya berbeda. Pilih salah satu untuk tiap baris:</p><div class="detail-list">${rows}</div><p class="hint"><strong>Buang</strong> memakai data server dan menghapus perubahan lokal yang bentrok. <strong>Kirim ulang</strong> mengirim perubahan lokal sebagai event baru. Logout bisa dilanjutkan setelah semua konflik dibereskan.</p>`, [{ label: 'Tutup', action: closeModal }]);
+    document.querySelectorAll('[data-conflict-discard]').forEach(button => { button.onclick = () => discardEventConflict(button.dataset.conflictDiscard); });
+    document.querySelectorAll('[data-conflict-reissue]').forEach(button => { button.onclick = () => reissueEventConflict(button.dataset.conflictReissue); });
+  }
+  function refreshEventConflictModal() {
+    const remaining = (state.syncIssues || []).filter(issue => issue.kind === 'event-conflict' && state.syncOutbox.some(event => event.id === issue.eventId));
+    if (!remaining.length) { closeModal(); return false; }
+    openEventConflictModal();
+    return true;
+  }
+  function discardEventConflict(eventId) {
+    const issue = (state.syncIssues || []).find(item => item.eventId === eventId && item.kind === 'event-conflict');
+    state.syncOutbox = state.syncOutbox.filter(event => event.id !== eventId);
+    state.syncIssues = (state.syncIssues || []).filter(item => item.eventId !== eventId);
+    // Sesuaikan data lokal dengan versi server (bila server mengirimnya),
+    // supaya perubahan yang dibuang tidak muncul lagi sebagai data lokal.
+    if (issue?.storedEvent) syncHooks.merge(issue.storedEvent);
+    save(); syncHooks.refresh();
+    toast('Perubahan bentrok dibuang; data disesuaikan dengan server.');
+    if (!refreshEventConflictModal()) toast('Konflik selesai. Semua data tersinkron — silakan logout kembali.');
+    void sessionSync(true);
+  }
+  function reissueEventConflict(eventId) {
+    const index = state.syncOutbox.findIndex(event => event.id === eventId);
+    if (index < 0) return;
+    const event = state.syncOutbox[index];
+    if (!event.payload || typeof event.payload.id !== 'string') return toast('Perubahan ini tidak dapat dikirim ulang dengan aman. Gunakan Buang.');
+    state.syncOutbox[index] = { ...event, id: uid() };
+    state.syncIssues = (state.syncIssues || []).filter(item => item.eventId !== eventId);
+    save();
+    toast('Perubahan dikirim ulang sebagai event baru.');
+    refreshEventConflictModal();
+    void sessionSync(true);
   }
   installSessionSync(sessionSync, syncCriticalEvent);
   const addOutletButton = document.getElementById('addOutletButton');

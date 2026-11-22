@@ -1,0 +1,306 @@
+/* ==========================================================================
+   FastQ polish-gemini3-produk.css — "Samakan persis render" ronde 3:
+   PRODUK & STOK (#page-products)
+   --------------------------------------------------------------------------
+   Sumber desain: ~/workspace/user/files/FastQ_POS_-_Polished_UI__1__0_xch2.html
+   (§ Produk baris 284-361) dan
+   ~/workspace/fastq-audit/shots-polish2/gemini-exact/render/measurements.md
+   (§ Produk & stok) + TEXT-DIFF.md (bagian produk).
+   Data TETAP data asli DB (produk asli); file ini hanya visual.
+
+   CARA MUAT: dimuat SETELAH polish-gemini2-pages.css (atau diinjeksikan
+   sesudahnya saat verifikasi), agar menang cascade pada spesifisitas sama.
+   CSS SAJA — tidak ada perubahan logika / JS produk (aturan tugas: JS
+   hanya file modul laporan), tidak ada font eksternal / CDN (offline-first).
+
+   Token render yang dipakai di sini (primer repo #1D4ED8 dipertahankan
+   kecuali yang disebut eksplisit): page bg #F6F8FC · navy #0F2544 ·
+   sekunder #475569 · redup #64748B · biru render #1447E6 (tombol Tambah
+   produk, harga) · border #E2E8F0 · kartu putih
+   border 1px rgba(226,232,240,.85) radius 16 ·
+   shadow 0 1px 2px rgba(15,37,68,.03), 0 4px 12px rgba(15,37,68,.02).
+
+   Yang SENGAJA DIPERTAHANKAN (keputusan, bukan kekurangan):
+   - Tombol "Ekspor CSV", "Impor CSV / Excel", "Template struk": fungsi
+     nyata yang prototipe tidak modelkan; dipertahankan, di-restyling ke
+     bahasa visual render (ghost 32px, 12px/600, radius 12).
+   - Tombol "Stok" per baris (desktop) + menu "Update stok" (mobile):
+     fungsi nyata; dipertahankan dengan visual yang sama seperti "Ubah".
+   - Dropdown "Semua kategori" + "Urutan default" / "Stok paling kecil"
+     TIDAK BISA disamakan pada ronde ini: kontrol itu tidak ada di live
+     (butuh <select> baru + logika filter/sort di modul produk — di luar
+     batas tugas yang hanya mengizinkan JS modul laporan). Yang ada
+     (#stockFilter "Semua stok / Stok menipis / Stok habis") di-restyling
+     ke ukuran/bahasa visual dropdown render (34px, 12px/600, radius 12).
+   - Kartu mobile: nama / sub / harga / tombol disamakan; susunan tetap
+     3 baris (nama+SKU, lalu kategori·stok·harga) karena markup live
+     memisah SKU, kategori, stok, harga ke elemen berbeda — penggabungan
+     jadi satu baris "SKU • Kategori • Stok" butuh JS modul produk.
+   - Tombol "Ubah" mobile: visual disamakan (outline, "Ubah"); perilakunya
+     tetap membuka menu Aksi ("Update stok" / "Ubah produk") karena
+     pemicu langsung ke modal Ubah butuh JS modul produk. Teks aksesibel
+     pemicu tetap "Aksi".
+   ========================================================================== */
+
+/* --- 1. Tab header sticky 53,6px, bg #F6F8FC/96 + blur (render
+   .tab-fixed-header h-[3.35rem]); judul 16px/800 mobile, 20px desktop;
+   subtitle 11px, hilang di mobile (render: hidden sm:block). --- */
+#page-products .page-heading {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  height: 53.6px;
+  min-height: 53.6px;
+  margin: -24px -26px 16px;
+  padding: 0 26px;
+  display: flex;
+  flex-direction: row; /* menimpa polish.css (.page-heading column ≤800px) */
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+  background: rgba(246, 248, 252, .96);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+#page-products .page-heading > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+#page-products .page-heading h1 {
+  font-size: 16px;
+  line-height: 1.25;
+  margin: 0;
+}
+#page-products .page-heading p {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #64748B;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-products .heading-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+#page-products .heading-actions .button {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  white-space: nowrap; /* menimpa polish.css white-space:normal ≤800px */
+}
+#page-products #addProductButton {
+  width: 136px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #1447E6;
+  border-color: #1447E6;
+  color: #FFFFFF;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, .10);
+}
+/* Menimpa polish-gemini-produk.css ≤800px (.heading-actions #addProductButton
+   width:100%): spesifisitas sama (1 id + 2 class), file ini dimuat belakangan. */
+#page-products .heading-actions #addProductButton { width: 136px; }
+#page-products #addProductButton:hover {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+}
+@media (min-width: 1024px) {
+  #page-products .page-heading h1 { font-size: 20px; }
+}
+@media (max-width: 1050px) {
+  #page-products .page-heading { margin: -20px -20px 16px; padding: 0 20px; }
+}
+@media (max-width: 800px) {
+  #page-products .page-heading { margin: -15px -12px 16px; padding: 0 16px; }
+}
+@media (max-width: 640px) {
+  /* Konten halaman render mulai x=16: geser 4px (search jadi 328px). */
+  #page-products { padding: 0 4px; }
+  #page-products .page-heading { margin: -15px -16px 16px; padding: 0 16px; }
+  #page-products .page-heading p { display: none; }
+  /* Mobile: baris 1 = judul + Tambah produk (53,6px); baris 2 = dua tombol
+     fungsi yang dipertahankan. Header sticky jadi ±88px di HP — deviasi
+     sadar karena render hanya punya 1 tombol aksi di header. */
+  #page-products .page-heading {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    align-content: center;
+  }
+  #page-products .heading-actions { display: contents; }
+  /* Judul basis konten (bukan 0) supaya Template/Ekspor tidak muat di
+     baris 1 dan turun ke baris 2; Template/Ekspor masing-masing ~50%. */
+  #page-products .page-heading > div:first-child { flex: 1 1 auto; min-width: 0; }
+  #page-products #addProductButton { order: 1; flex: none; }
+  #page-products #receiptSettingsButton,
+  #page-products #exportProducts { order: 2; flex: 1 1 calc(50% - 6px); min-width: 0; }
+}
+
+/* --- 2. Kartu panel: padding 14px mobile / 16px desktop (render p-3.5/p-4). --- */
+@media (max-width: 640px) {
+  #page-products .inventory-panel { padding: 14px; }
+}
+@media (min-width: 641px) {
+  #page-products .inventory-panel { padding: 16px; }
+}
+
+/* --- 3. Toolbar: search 34px 12px (render 328×34 mobile / 766×34
+   desktop); filter + impor 34px 12px/600 radius 12; dropdown 2 kolom
+   di HP (render grid-cols-2). --- */
+#page-products .toolbar .search-wrap {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+}
+#page-products .search-wrap svg { width: 16px; height: 16px; }
+#page-products #inventorySearch {
+  height: 34px;
+  min-height: 34px;
+  font-size: 12px;
+  padding: 0 11px 0 39px;
+  background: rgba(248, 250, 252, .5);
+}
+#page-products #stockFilter,
+#page-products #importProducts {
+  height: 34px;
+  min-height: 34px;
+  font-size: 12px;
+  font-weight: 600;
+}
+@media (min-width: 801px) {
+  #page-products #stockFilter { flex: 0 0 190px; width: 190px; }
+}
+@media (max-width: 640px) {
+  #page-products #stockFilter,
+  #page-products #importProducts { flex: 1 1 0; min-width: 0; }
+}
+
+/* --- 4. Tabel desktop: thead 1150×39,5 (10px/700 slate-500 uppercase);
+   baris 1150×51, 13px; nama 13px/700 navy; harga 13px/700 biru;
+   tombol Stok/Ubah kompak ala render (12px/600, radius 8). --- */
+#page-products .inventory-table-wrap thead th {
+  font-size: 10px;
+  line-height: 1.45; /* 12+14,5+12+1 border = 39,5 (render) */
+  padding: 12px 16px;
+}
+#page-products .inventory-table-wrap tbody td {
+  font-size: 13px;
+  padding: 12px 16px;
+}
+#page-products .inventory-table-wrap td:first-child strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+#page-products .inventory-table-wrap td:nth-child(4) {
+  font-size: 13px;
+  font-weight: 700;
+}
+#page-products .inventory-table-wrap .button.small {
+  height: 26px; /* 12+26+12+1 border = baris 51 (render) */
+  min-height: 26px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+/* --- 5. Kartu mobile (daftar kartu, bukan tabel — breakpoint live ≤1100px):
+   nama 13px/600 navy; sub "SKU • Kategori • Stok" 11px; harga 13px/700
+   biru di kanan; tombol "Ubah" outline; stok rendah teks merah. --- */
+@media (max-width: 1100px) {
+  #page-products .inventory-mobile-item {
+    padding: 12px 14px;
+    gap: 4px 10px;
+  }
+  #page-products .inventory-mobile-product strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0F2544;
+  }
+  #page-products .inventory-mobile-product span {
+    font-size: 11px;
+    color: #94A3B8;
+  }
+  #page-products .inventory-mobile-summary {
+    font-size: 11px;
+    gap: 6px 8px;
+    align-items: baseline;
+  }
+  #page-products .inventory-mobile-summary span { color: #64748B; }
+  #page-products .inventory-mobile-summary span:first-child::after {
+    content: "•";
+    margin-left: 8px;
+    color: #CBD5E1;
+  }
+  #page-products .inventory-mobile-summary span:last-child {
+    margin-left: auto;
+    font-size: 0;
+  }
+  #page-products .inventory-mobile-summary span:last-child strong {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1447E6;
+  }
+  #page-products .inventory-mobile-summary .inventory-stock-low {
+    font-size: 11px;
+  }
+  /* Pemicu "Aksi" tampil sebagai tombol outline "Ubah" (render); perilaku
+     tetap membuka menu Aksi (Update stok / Ubah produk). */
+  #page-products .inventory-action-picker { justify-self: end; }
+  #page-products .inventory-action-trigger {
+    height: auto;
+    min-height: 0;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    background: #FFFFFF;
+    color: #0F2544;
+    box-shadow: none;
+  }
+  #page-products .inventory-action-trigger:hover { background: #F8FAFC; }
+  #page-products .inventory-action-trigger span {
+    font-size: 0;
+    line-height: 0;
+  }
+  #page-products .inventory-action-trigger span::after {
+    content: "Ubah";
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #0F2544;
+  }
+  #page-products .inventory-action-trigger svg { display: none; }
+}
+
+/* --- 6. Print: header sticky kembali statis. --- */
+@media print {
+  #page-products .page-heading {
+    position: static;
+    height: auto;
+    min-height: 0;
+    margin: 0 0 10px;
+    padding: 0;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

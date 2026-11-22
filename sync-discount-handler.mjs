@@ -15,8 +15,8 @@ export async function applyDiscountEvent({ client, event, scope, actor, deviceId
   if (shift.rows[0].closed_at) throw Object.assign(new Error('Diskon tidak dapat diminta untuk shift yang sudah ditutup.'), { status: 409 });
   const sale = await client.query('SELECT shift_id,status FROM sales WHERE id=$1 AND outlet_id=$2 FOR UPDATE', [request.saleId, scope]);
   if (!sale.rowCount) throw Object.assign(new Error('Transaksi diskon belum tersinkron atau tidak ditemukan.'), { status: 409 });
-  if (sale.rows[0].status !== 'Lunas' || sale.rows[0].shift_id !== request.shiftId) {
-    throw Object.assign(new Error('Permintaan diskon harus terkait transaksi lunas pada shift yang sama.'), { status: 409 });
+  if (!['Lunas', 'Piutang'].includes(sale.rows[0].status) || sale.rows[0].shift_id !== request.shiftId) {
+    throw Object.assign(new Error('Permintaan diskon harus terkait transaksi lunas atau piutang pada shift yang sama.'), { status: 409 });
   }
   const saleItems = await client.query(
     `SELECT product_name,quantity::text AS quantity,unit_price_rupiah::text AS unit_price_rupiah,discount_rupiah::text AS discount_rupiah

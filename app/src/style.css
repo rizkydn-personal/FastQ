@@ -23,4 +23,8 @@ body { background: var(--gray-50); color: #1F2937; font-family: Inter, ui-sans-s
 @media (prefers-reduced-motion: reduce) { .marketing-visual img { animation: none; } }
 
 :focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
-input:focus-visible, select:focus-visible { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 3px rgba(29, 78, 216, .18); }
+input:focus-visible, select:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; border-color: var(--blue-600); }
+
+/* ui-ux-pro-max (2026-11-21): small-phone status spacing; images never overflow */
+img { max-width: 100%; }
+@media (max-width: 480px) { .status { padding: 20px 16px; } }

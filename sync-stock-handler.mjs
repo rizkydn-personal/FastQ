@@ -32,8 +32,40 @@ export async function applyStockEvent({ client, event, scope, actor, deviceId, i
               [d.outletId, d.productId, variantId, delta, d.reason],
             ),
           ]);
-          if (Number(matchingItems.rows[0].count) <= Number(priorMovements.rows[0].count)) {
-            throw Object.assign(new Error('Item penjualan ini sudah memiliki pengurangan stok atau jumlahnya tidak cocok.'), { status: 409 });
+          const matching = Number(matchingItems.rows[0].count);
+          const prior = Number(priorMovements.rows[0].count);
+          if (matching <= 0) {
+            throw Object.assign(new Error('Item penjualan ini tidak cocok dengan jumlah pengurangan stok.'), { status: 409 });
+          }
+          if (prior >= matching) {
+            // Pengurangan sudah diterapkan server saat sale.upsert diterima (T3)
+            // atau oleh event sebelumnya; terima event ini tanpa mengurangi stok
+            // dua kali (idempotent).
+            return;
+          }
+        }
+        if (actor.role !== 'Kasir' && !isReconciliation && delta < 0 && typeof d.reason === 'string' && d.reason.startsWith('Penjualan ')) {
+          // Peran selain Kasir juga menerima stock.delta klien untuk transaksi
+          // yang sama; kenali pengurangan yang sudah diterapkan server (T3)
+          // lewat nomor transaksi di alasan agar stok tidak berkurang dua kali.
+          const saleNumber = d.reason.slice('Penjualan '.length);
+          const sale = await client.query(`SELECT id FROM sales WHERE outlet_id=$1 AND sale_number=$2 AND status IN ('Lunas','Piutang')`, [scope, saleNumber]);
+          if (sale.rowCount) {
+            const [matchingItems, priorMovements] = await Promise.all([
+              client.query(
+                `SELECT count(*)::int AS count FROM sale_items
+                 WHERE sale_id=$1 AND product_id=$2 AND variant_id IS NOT DISTINCT FROM $3::uuid AND quantity=$4::numeric`,
+                [sale.rows[0].id, d.productId, variantId, Math.abs(delta)],
+              ),
+              client.query(
+                `SELECT count(*)::int AS count FROM stock_movements
+                 WHERE outlet_id=$1 AND product_id=$2 AND variant_id IS NOT DISTINCT FROM $3::uuid
+                   AND delta=$4::numeric AND reason=$5`,
+                [d.outletId, d.productId, variantId, delta, d.reason],
+              ),
+            ]);
+            const matching = Number(matchingItems.rows[0].count);
+            if (matching > 0 && Number(priorMovements.rows[0].count) >= matching) return;
           }
         }
         await client.query(

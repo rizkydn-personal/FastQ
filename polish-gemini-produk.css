@@ -1,0 +1,548 @@
+/* ==========================================================================
+   FastQ polish-gemini-produk.css — penerapan desain Gemini (prototipe
+   "FastQ POS - Polished UI 1.0") ke halaman Produk & stok (#page-products)
+   dan Outlet & transfer stok (#page-outlets), CSS SAJA, tanpa ubah logika.
+
+   Sumber desain: ~/workspace/user/files/FastQ_POS_-_Polished_UI__1__0_xch2.html
+   - Produk  : baris 284-361  (header, toolbar/search/filter, tabel desktop,
+               daftar mobile, kartu)
+   - Outlet  : baris 922-1011 (header, form transfer, daftar outlet, riwayat)
+
+   Cara pakai: file ini dimuat SETELAH polish.css / polish-produk.css
+   (injeksi addStyleTag saat verifikasi; belum didaftarkan di index.html /
+   copy-legacy.mjs — itu keputusan pemilik repo). Aturan di sini menang atas
+   polish-produk.css pada konflik yang disengaja dan dicatat di bawah.
+
+   Token Gemini yang diterapkan (primer repo DIPERTAHANKAN #1D4ED8, bukan
+   #1447E6 prototipe):
+   - Page bg #F6F8FC; navy #0F2544 (judul/angka penting, weight 800,
+     letter-spacing -0.02em); sekunder #475569; redup #64748B
+   - Primer #1D4ED8, hover gelap #1E40AF, tint #DBEAFE / #EFF6FF
+   - Border #E2E8F0; kartu bg putih, border 1px rgba(226,232,240,.85),
+     shadow "0 1px 2px rgba(15,37,68,.03), 0 4px 12px rgba(15,37,68,.02)",
+     radius 16px
+   - Radius: kartu 16px, tombol/input 12px, kecil 8px, pill 9999px
+   - Input: radius 12px, border #E2E8F0, bg #F8FAFC, fokus border #1D4ED8 +
+     ring 2px rgba(29,78,216,.10), tinggi 44px
+   - Font: system stack SAJA (tanpa Google Fonts, tanpa CDN Phosphor —
+     ikon memakai SVG inline repo yang sudah ada)
+   - Fokus: outline 2px solid #1D4ED8 offset 2px (dari polish-produk.css);
+     touch target >=44px; angka tabular-nums; harga biru #1D4ED8 bold;
+     status outlet = dot hijau + teks (bukan pill)
+
+   Penyimpangan sadar dari prototipe (mengikuti batas tugas):
+   - Subtitle heading & thead prototipe 10-11px -> 13px / 11px. Teks konten
+     minimal 13px; 11px hanya untuk label (thead tabel, uppercase +
+     tracking .06em) sesuai batas tugas.
+   - Dropdown kustom prototipe (button + menu) TIDAK ditiru: repo memakai
+     <select> native; diberi chevron SVG inline (data URI, offline) saja.
+   - "Tambah outlet" TIDAK disentuh sama sekali (tetap hidden by design).
+   - Modal produk di-scope lewat .modal-backdrop:has(#pName) — hanya modal
+     Tambah/Ubah produk yang kena; modal lain (stok, varian, bayar, dsb.)
+     tidak disentuh.
+   - OFFLINE-FIRST: tidak ada @import, font eksternal, atau CDN apa pun.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Fondasi kedua halaman: system stack + page bg #F6F8FC.
+   main diwarnai hanya saat salah satu dari kedua halaman aktif, supaya
+   halaman lain (kasir, laporan, dsb.) tidak berubah.
+   -------------------------------------------------------------------------- */
+#page-products,
+#page-outlets {
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  color: #475569;
+}
+main:has(#page-products.active),
+main:has(#page-outlets.active) {
+  background: #f6f8fc;
+}
+
+/* --------------------------------------------------------------------------
+   2. Heading halaman: h1 navy 800, -0.02em (Gemini text-base lg:text-xl);
+   subtitle 13px #64748B (bukan 11px prototipe — batas min. 13px).
+   -------------------------------------------------------------------------- */
+#page-products .page-heading h1,
+#page-outlets .page-heading h1 {
+  color: #0f2544;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+#page-products .page-heading p,
+#page-outlets .page-heading p {
+  color: #64748b;
+  font-size: 13px;
+}
+@media (max-width: 800px) {
+  #page-products .page-heading h1,
+  #page-outlets .page-heading h1 {
+    font-size: 16px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. Tombol kedua halaman: tinggi 44px, radius 12px.
+   Primer: bg #1D4ED8, teks putih bold, shadow-sm, hover #1E40AF.
+   Ghost: border #E2E8F0, bg putih, teks navy.
+   "Tambah produk" full-width di mobile (Gemini: tombol aksi utama
+   membentang; sudah ada di polish-produk.css, ditegaskan di sini supaya
+   lapisan Gemini berdiri sendiri).
+   -------------------------------------------------------------------------- */
+#page-products .button,
+#page-outlets .button {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border-color: #e2e8f0;
+  background: #fff;
+  color: #0f2544;
+  font-weight: 600;
+}
+#page-products .button:hover,
+#page-outlets .button:hover {
+  background: #f8fafc;
+}
+#page-products .button.primary,
+#page-outlets .button.primary {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.05);
+}
+#page-products .button.primary:hover,
+#page-outlets .button.primary:hover {
+  border-color: #1e40af;
+  background: #1e40af;
+}
+#page-products .button.primary:active,
+#page-outlets .button.primary:active {
+  background: #1e40af;
+}
+/* Tombol kecil di tabel (Stok / Ubah): radius kecil 8px, tetap >=44px. */
+#page-products .inventory-table-wrap .button.small {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+@media (max-width: 800px) {
+  #page-products .heading-actions #addProductButton {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  #page-outlets #transferButton {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Kartu/panel: bg putih, border rgba(226,232,240,.85), shadow Gemini,
+   radius 16px. Panel-title 14px 800 navy (Gemini text-sm font-extrabold).
+   -------------------------------------------------------------------------- */
+#page-products .inventory-panel,
+#page-outlets .panel {
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03),
+    0 4px 12px rgba(15, 37, 68, 0.02);
+}
+#page-outlets .panel-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f2544;
+}
+@media (min-width: 801px) {
+  #page-outlets .panel {
+    padding: 20px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Toolbar produk: garis bawah #F1F5F9 (Gemini divide/border-slate-100).
+   Search: ikon #94A3B8, input bg #F8FAFC; filter & impor ikut token input.
+   -------------------------------------------------------------------------- */
+#page-products .toolbar {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 0;
+}
+#page-products .inventory-table-wrap {
+  margin-top: 4px;
+}
+#page-products .search-wrap svg {
+  color: #94a3b8;
+}
+#page-products #inventorySearch::placeholder {
+  color: #94a3b8;
+}
+
+/* --------------------------------------------------------------------------
+   6. Input & select kedua halaman: 44px, radius 12px, border #E2E8F0,
+   bg #F8FAFC; fokus border #1D4ED8 + ring 2px rgba(29,78,216,.10) dan
+   bg putih. Select native diberi chevron SVG inline (offline).
+   Catatan: box-shadow !important diperlukan karena polish-produk.css
+   memaksa box-shadow:none !important pada :focus-visible.
+   -------------------------------------------------------------------------- */
+#page-products .field,
+#page-products select,
+#page-outlets .field,
+#page-outlets select,
+#page-outlets input[type="number"],
+#page-outlets input[type="text"] {
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #f8fafc;
+  color: #0f2544;
+  font-size: 14px;
+}
+#page-products select,
+#page-outlets select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 18px;
+  font-weight: 600;
+}
+#page-products .field:focus,
+#page-products select:focus,
+#page-outlets .field:focus,
+#page-outlets select:focus,
+#page-outlets input:focus {
+  border-color: #1d4ed8;
+  background-color: #fff;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.1) !important;
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+#page-products .field::placeholder,
+#page-outlets .field::placeholder {
+  color: #94a3b8;
+}
+
+/* --------------------------------------------------------------------------
+   7. Tabel desktop (produk + riwayat transfer): thead sticky bg #F8FAFC,
+   label 11px uppercase tracking .06em #64748B; baris divide #F1F5F9,
+   hover #F8FAFC; angka tabular-nums; harga jual biru bold; SKU/barcode
+   redup; nama 15px 800 navy.
+   Aturan sel tabel riwayat transfer HANYA berlaku >=641px: di <=640px
+   polish-extra.css mengubah tabel itu menjadi kartu (thead display:none,
+   td flex + label ::before). Aturan global di sini akan menimpa padding /
+   border / font-size kartu itu bila tidak dibatasi — sudah diperbaiki
+   2026-11-22 setelah probe geometri (thead 0x0 di kedua kondisi, overlap
+   "WAKTU" terbukti bukan dari file ini).
+   -------------------------------------------------------------------------- */
+#page-products .inventory-table-wrap table,
+#page-outlets .table-wrap table {
+  font-variant-numeric: tabular-nums;
+}
+#page-products .inventory-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  white-space: nowrap;
+}
+#page-products .inventory-table-wrap thead th:first-child {
+  padding-left: 20px;
+}
+#page-products .inventory-table-wrap thead th:last-child {
+  padding-right: 20px;
+}
+#page-products .inventory-table-wrap tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+  color: #475569;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#page-products .inventory-table-wrap tbody td:first-child {
+  padding-left: 20px;
+}
+#page-products .inventory-table-wrap tbody td:last-child {
+  padding-right: 20px;
+}
+#page-products .inventory-table-wrap tbody tr:hover {
+  background: #f8fafc;
+}
+#page-products .inventory-table-wrap tbody tr:last-child td {
+  border-bottom: 0;
+}
+@media (min-width: 641px) {
+  #page-outlets .table-wrap thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  #page-outlets .table-wrap thead th:first-child {
+    padding-left: 20px;
+  }
+  #page-outlets .table-wrap thead th:last-child {
+    padding-right: 20px;
+  }
+  #page-outlets .table-wrap tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    color: #475569;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  #page-outlets .table-wrap tbody td:first-child {
+    padding-left: 20px;
+  }
+  #page-outlets .table-wrap tbody td:last-child {
+    padding-right: 20px;
+  }
+  #page-outlets .table-wrap tbody tr:hover {
+    background: #f8fafc;
+  }
+  #page-outlets .table-wrap tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+@media (max-width: 640px) {
+  /* Baris kosong mode kartu: label ::before ("Waktu", dst. dari
+     polish-extra.css) ikut menempel di sel colspan sehingga tampil
+     "WAKTU Belum ada transfer." — sembunyikan labelnya di sel kosong. */
+  #page-outlets .table-wrap tbody td[colspan]::before {
+    display: none;
+  }
+}
+#page-products .inventory-table-wrap td:first-child strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f2544;
+}
+#page-products .inventory-table-wrap td:nth-child(2) {
+  font-size: 13px;
+  color: #64748b;
+}
+#page-products .inventory-table-wrap td:nth-child(2) .hint {
+  font-size: 13px;
+  color: #94a3b8;
+}
+#page-products .inventory-table-wrap td:nth-child(3) {
+  color: #475569;
+}
+#page-products .inventory-table-wrap td:nth-child(4) {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+#page-products .inventory-table-wrap td:nth-child(5),
+#page-products .inventory-table-wrap td:nth-child(6),
+#page-outlets .table-wrap td.numeric {
+  font-variant-numeric: tabular-nums;
+}
+#page-products .inventory-table-wrap .empty-row,
+#page-outlets .table-wrap .empty-row {
+  color: #64748b;
+}
+
+/* --------------------------------------------------------------------------
+   8. Kartu produk mobile: shadow Gemini; nama 800 navy; SKU redup 13px;
+   ringkasan 13px; harga biru bold (sudah di polish-produk.css, ditegaskan);
+   stok menipis tetap merah lewat .inventory-stock-low.
+   Menu "Aksi": shadow Gemini, item 44px radius 8px.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+  #page-products .inventory-mobile-item {
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03),
+      0 4px 12px rgba(15, 37, 68, 0.02);
+  }
+  #page-products .inventory-mobile-product strong {
+    font-weight: 800;
+    color: #0f2544;
+  }
+  #page-products .inventory-mobile-product span {
+    font-size: 13px;
+    color: #64748b;
+  }
+  #page-products .inventory-mobile-summary {
+    font-size: 13px;
+    color: #475569;
+    font-variant-numeric: tabular-nums;
+  }
+  #page-products .inventory-mobile-summary span:last-child strong {
+    color: #1d4ed8;
+    font-weight: 700;
+  }
+  #page-products .inventory-action-trigger {
+    border-color: #e2e8f0;
+    background: #fff;
+    color: #0f2544;
+  }
+  #page-products .inventory-action-trigger:hover {
+    background: #f8fafc;
+  }
+  #page-products .inventory-action-menu {
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03),
+      0 4px 12px rgba(15, 37, 68, 0.02);
+  }
+  #page-products .inventory-action-menu button {
+    border-radius: 8px;
+    font-size: 13px;
+    color: #0f2544;
+  }
+  #page-products .inventory-action-menu button:hover {
+    background: #eff6ff;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Form transfer outlet: label 13px 600 #475569 (Gemini label
+   text-xs semibold dinaikkan ke batas min. 13px); gap grid 16px desktop;
+   catatan full-width; tombol primer ikut §3.
+   -------------------------------------------------------------------------- */
+#page-outlets .form-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+#page-outlets .form-grid {
+  gap: 16px;
+}
+#page-outlets #transferQty {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   10. Daftar outlet: nama 15px 600 navy #0F2544; status teks netral
+   dengan dot hijau 8px (bukan pill — sudah di polish-produk.css, warna
+   teks diselaraskan ke #475569); baris divide #F1F5F9.
+   -------------------------------------------------------------------------- */
+#page-outlets #outletList .detail-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+#page-outlets #outletList .detail-row:last-child {
+  border-bottom: 0;
+}
+#page-outlets #outletList .detail-row span {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f2544;
+}
+#page-outlets #outletList .detail-row strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  background: none;
+}
+#page-outlets #outletList .detail-row strong:not(:empty)::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+/* --------------------------------------------------------------------------
+   11. Modal Tambah/Ubah produk SAJA (:has(#pName)): kartu radius 16px,
+   border + shadow Gemini; judul 16px 800 navy; label 13px 600 #475569;
+   field ikut token §6 (44px, radius 12, bg #F8FAFC); tombol foot
+   radius 12px min. 44px; tombol tutup 44px. Modal lain tidak kena.
+   -------------------------------------------------------------------------- */
+.modal-backdrop:has(#pName) .modal {
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(15, 37, 68, 0.16);
+}
+.modal-backdrop:has(#pName) .modal-head {
+  border-bottom: 1px solid #f1f5f9;
+}
+.modal-backdrop:has(#pName) .modal-head h2 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f2544;
+}
+.modal-backdrop:has(#pName) .modal-body .form-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+.modal-backdrop:has(#pName) .modal-body .field,
+.modal-backdrop:has(#pName) .modal-body select {
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #f8fafc;
+  color: #0f2544;
+  font-size: 14px;
+}
+.modal-backdrop:has(#pName) .modal-body .field:focus,
+.modal-backdrop:has(#pName) .modal-body select:focus {
+  border-color: #1d4ed8;
+  background-color: #fff;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.1) !important;
+}
+.modal-backdrop:has(#pName) .modal-body .field::placeholder {
+  color: #94a3b8;
+}
+.modal-backdrop:has(#pName) .modal-body .hint {
+  font-size: 13px;
+  color: #64748b;
+}
+.modal-backdrop:has(#pName) .modal-body .form-field .field[type="file"] {
+  height: auto;
+  padding: 6px 11px;
+}
+.modal-backdrop:has(#pName) .modal-foot .button {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border-color: #e2e8f0;
+  background: #fff;
+  color: #0f2544;
+  font-weight: 600;
+}
+.modal-backdrop:has(#pName) .modal-foot .button.primary {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.05);
+}
+.modal-backdrop:has(#pName) .modal-foot .button.primary:hover {
+  border-color: #1e40af;
+  background: #1e40af;
+}
+.modal-backdrop:has(#pName) .modal-close {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  color: #475569;
+}

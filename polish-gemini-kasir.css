@@ -1,0 +1,798 @@
+/* ==========================================================================
+   polish-gemini-kasir.css — Desain Gemini diterapkan ke halaman KASIR asli
+   --------------------------------------------------------------------------
+   Sumber desain : ~/workspace/user/files/FastQ_POS_-_Polished_UI__1__0_xch2.html
+                   (bagian kasir, mobileCartDrawer, discount modal,
+                   checkout modal, renderProductCatalog — POLA STRUKTUR
+                   kartu saja; JS Gemini TIDAK diadopsi)
+   Scope         : #page-pos + floating cart bar (.mobile-checkout) + modal
+                   kasir (.modal-backdrop/.modal saat #page-pos aktif:
+                   Preview keranjang, Diskon, Pembayaran, Struk).
+                   File ini BELUM di-wire (tidak ada <link> di index.html,
+                   tidak ada di copy-legacy.mjs) — verifikasi via injeksi
+                   addStyleTag di server live; wiring + rebuild oleh parent.
+   Sifat         : CSS SAJA. Tidak mengubah logika, DOM, atau JS apa pun.
+                   Modal struk tetap 3 tombol Share/Print/Selesai, keyboard
+                   HP tidak auto-popup, diskon kasir max 10%, stok atomik.
+   OFFLINE-FIRST: tanpa CDN, tanpa @import, tanpa url() eksternal, tanpa
+                   Google Fonts, tanpa Phosphor — ikon tetap inline SVG
+                   repo (sudah ada) / pola mask ::before yang sudah ada.
+   --------------------------------------------------------------------------
+   TOKEN GEMINI (yang diterapkan):
+   - bg halaman #F6F7FB; navy #0F2544 (judul/angka penting, w800, ls -0.02em)
+   - sekunder #475569; redup #64748B
+   - primer #1D4ED8 (dipertahankan dari repo, BUKAN #1447E6); gradient
+     tombol bayar #1447E6 -> #1D4ED8; hover gelap #1E40AF; tint aktif #DBEAFE
+   - border #E2E8F0; kartu putih, border 1px rgba(226,232,240,.85),
+     shadow "0 1px 2px rgba(15,37,68,.03), 0 4px 12px rgba(15,37,68,.02)"
+   - radius: kartu 16px, tombol/input 12px, kecil 8px, pill 9999px
+   - tombol primer: radius 12px, teks putih bold, shadow-sm
+     ghost: border #E2E8F0, bg putih, teks navy
+   - input: radius 12px, border #E2E8F0, bg #F8FAFC,
+     fokus border #1D4ED8 + ring 2px rgba(29,78,216,.10)
+   - modal overlay rgba(15,23,42,.40) + backdrop-blur 2px;
+     konten modal radius 16px
+   - font: system stack saja; judul w800 ls -0.02em
+   - fokus: outline 2px solid #1D4ED8, offset 2px; touch target >=44px;
+     teks konten >=13px (label seksi uppercase BOLEH 11px);
+     angka tabular-nums
+   --------------------------------------------------------------------------
+   BATAS KERAS — GEOMETRI REFERENSI RIZKY (390px), TIDAK DIUBAH.
+   Nilai di bawah ini ditegaskan ulang apa adanya (bukan nilai baru):
+   pitch 65px, thumb 46x46 radius 10, nama 15px, harga/stok 13px,
+   header 56px, 8 baris kelihatan, bg #F6F7FB, logo glyph asli
+   fastq-cart.png (tidak disentuh), Tahan 48px (coarse) radius 8px,
+   search/scan/kategori 44px, nav pill radius 16px #DBEAFE.
+   Geometri kunci di bawah hanya berlaku <=800px (referensi adalah foto
+   HP 390px); di desktop (>800px) ukuran yang sudah terverifikasi di
+   polish.css dipertahankan, hanya token warna/radius/shadow yang diterapkan.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Latar halaman + font system stack (scope kasir aktif saja)
+   -------------------------------------------------------------------------- */
+body:has(#page-pos.active),
+.shell:has(#page-pos.active),
+.shell:has(#page-pos.active) > main {
+  background-color: #F6F7FB;
+}
+#page-pos,
+.mobile-checkout,
+body:has(#page-pos.active) .modal-backdrop {
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   2. Judul + teks — navy #0F2544 w800 ls -0.02em; sekunder #475569;
+      redup #64748B. Ukuran font TIDAK diubah di sini (diatur blok 6-8).
+   -------------------------------------------------------------------------- */
+#page-pos .page-heading h1,
+#page-pos .cart-head h2,
+body:has(#page-pos.active) .modal-head h2 {
+  color: #0F2544;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+#page-pos .page-heading p,
+#page-pos .cart-count {
+  color: #64748B;
+}
+#page-pos .summary-row span,
+#page-pos .cart-item-price,
+#page-pos .product-stock {
+  color: #475569;
+}
+#page-pos .summary-total span,
+#page-pos .summary-total strong,
+#page-pos .cart-item-name,
+#page-pos .product-name {
+  color: #0F2544;
+}
+#page-pos .summary-total strong {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Angka selalu tabular-nums (harga, stok, total, qty, kembalian) */
+#page-pos .product-price,
+#page-pos .product-stock,
+#page-pos .cart-item-price,
+#page-pos .summary-row strong,
+#page-pos .summary-total strong,
+#page-pos #subtotal,
+#page-pos #total,
+#page-pos #payTotal,
+#page-pos .product-qty-badge,
+#mobileCartTotal,
+body:has(#page-pos.active) .modal .cart-preview-line > strong,
+body:has(#page-pos.active) .modal .detail-row strong,
+body:has(#page-pos.active) .modal .pay-amount strong,
+body:has(#page-pos.active) .modal .change-box strong,
+body:has(#page-pos.active) .modal .cart-preview-quantity-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   3. Tombol — primer gradient bayar, primer solid, ghost, danger.
+      Radius: tombol 12px, tombol kecil 8px. Hover primer gelap #1E40AF.
+      Tinggi tombol TIDAK diubah (Tahan 44/48px, bayar 52px, dsb — blok 6).
+   -------------------------------------------------------------------------- */
+/* Tombol bayar (desktop cart + floating bar): gradient Gemini */
+#page-pos #payButton,
+.mobile-pay-button {
+  background: linear-gradient(to right, #1447E6, #1D4ED8);
+  border-color: #1D4ED8;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.08);
+}
+#page-pos #payButton:hover,
+.mobile-pay-button:hover {
+  background: #1E40AF;
+  border-color: #1E40AF;
+}
+#page-pos #payButton:disabled,
+.mobile-pay-button:disabled {
+  background: #94A3B8;
+  border-color: #94A3B8;
+  box-shadow: none;
+}
+/* Tombol primer lain di kasir (Simpan/Selesai di modal): solid #1D4ED8 */
+#page-pos .button.primary,
+body:has(#page-pos.active) .modal-foot .button.primary,
+body:has(#page-pos.active) .modal-body .button.primary {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.08);
+}
+#page-pos .button.primary:hover,
+body:has(#page-pos.active) .modal-foot .button.primary:hover,
+body:has(#page-pos.active) .modal-body .button.primary:hover {
+  background: #1E40AF;
+  border-color: #1E40AF;
+}
+/* Ghost: border #E2E8F0, bg putih, teks navy */
+#page-pos .button:not(.primary):not(.danger):not(.danger-solid),
+body:has(#page-pos.active) .modal-foot .button:not(.primary):not(.danger):not(.danger-solid),
+body:has(#page-pos.active) .modal-body .button:not(.primary):not(.danger):not(.danger-solid) {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  border-radius: 12px;
+  color: #0F2544;
+}
+#page-pos .button:not(.primary):not(.danger):not(.danger-solid):hover,
+body:has(#page-pos.active) .modal-foot .button:not(.primary):not(.danger):not(.danger-solid):hover {
+  background: #F8FAFC;
+}
+/* Tombol kecil (Diskon/Kosongkan/dll): radius 8px */
+#page-pos .button.small,
+body:has(#page-pos.active) .modal .button.small {
+  border-radius: 8px;
+}
+/* Danger ghost (Kosongkan): teks merah, tint merah muda */
+#page-pos .button.danger,
+body:has(#page-pos.active) .modal .button.danger {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  color: #DC2626;
+}
+#page-pos .button.danger:hover,
+body:has(#page-pos.active) .modal .button.danger:hover {
+  background: #FEE2E2;
+}
+
+/* --------------------------------------------------------------------------
+   4. Input — radius 12px, border #E2E8F0, bg #F8FAFC;
+      fokus border #1D4ED8 + ring 2px rgba(29,78,216,.10)
+   -------------------------------------------------------------------------- */
+#page-pos .field,
+#page-pos .search-wrap input,
+#page-pos select,
+body:has(#page-pos.active) .modal .field,
+body:has(#page-pos.active) .modal select,
+body:has(#page-pos.active) .modal input[type="text"],
+body:has(#page-pos.active) .modal input[type="number"] {
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background-color: #F8FAFC;
+  color: #0F2544;
+}
+#page-pos .field:focus,
+#page-pos .search-wrap input:focus,
+#page-pos select:focus,
+body:has(#page-pos.active) .modal .field:focus,
+body:has(#page-pos.active) .modal select:focus,
+body:has(#page-pos.active) .modal input:focus {
+  border-color: #1D4ED8;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.10);
+  outline: none;
+}
+#page-pos .search-wrap input::placeholder,
+body:has(#page-pos.active) .modal input::placeholder {
+  color: #64748B;
+}
+#page-pos .search-wrap svg {
+  color: #64748B;
+}
+/* Label form di modal kasir: 13px semibold sekunder */
+body:has(#page-pos.active) .modal .form-field label {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   5. Fokus keyboard — outline 2px #1D4ED8 offset 2px (semua kontrol kasir
+      + floating bar + modal kasir). Mengalahkan cincin 3px polish.css.
+   -------------------------------------------------------------------------- */
+#page-pos :is(button, input, select, textarea, a, [tabindex]):focus-visible,
+.mobile-checkout :is(button, a, [tabindex]):focus-visible,
+body:has(#page-pos.active) .modal :is(button, input, select, textarea, a, [tabindex]):focus-visible {
+  outline: 2px solid #1D4ED8 !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. KUNCI GEOMETRI (<=800px) — ditegaskan ulang, nilai sama seperti
+      polish-kasir.css / referensi. Jangan ubah angka di blok ini.
+      Header 56px, Tahan 44px (48px coarse) radius 8px,
+      search/scan/kategori 44px, nav pill radius 16px #DBEAFE.
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) {
+  .shell:has(#page-pos.active) .topbar {
+    min-height: 56px !important;
+    height: 56px !important;
+  }
+  #page-pos .page-heading #holdTransaction {
+    height: 44px;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+  #page-pos .catalog .search-wrap input,
+  #page-pos #cameraScanButton,
+  #page-pos .category-picker-trigger {
+    height: 44px;
+    min-height: 44px;
+  }
+}
+/* Nav pill aktif: radius 16px #DBEAFE — berlaku semua lebar selama kasir
+   aktif (referensi Rizky; di desktop sidebar vertikal, pill yang sama). */
+body:has(#page-pos.active) .shell .sidebar .nav-link {
+  border-radius: 16px;
+}
+body:has(#page-pos.active) .shell .sidebar .nav-link.active {
+  background: #DBEAFE;
+  border: 0;
+  border-radius: 16px;
+  color: #1D4ED8;
+}
+@media (max-width: 800px) and (pointer: coarse) {
+  #page-pos .page-heading #holdTransaction {
+    height: 48px !important;
+    min-height: 48px !important;
+    border-radius: 8px;
+  }
+}
+
+/* Tahan = ghost Gemini (teks navy, border #E2E8F0); ikon pause 16-18px */
+#page-pos #holdTransaction {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  color: #0F2544;
+  border-radius: 8px;
+}
+#page-pos #holdTransaction svg {
+  width: 18px;
+  height: 18px;
+}
+/* Ikon search/scan 18px (inline SVG repo, tanpa CDN) */
+#page-pos .search-wrap svg,
+#page-pos #cameraScanButton svg {
+  width: 18px;
+  height: 18px;
+}
+#page-pos #cameraScanButton {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  border-radius: 12px;
+  color: #475569;
+}
+#page-pos #cameraScanButton:hover {
+  background: #F8FAFC;
+}
+
+/* --------------------------------------------------------------------------
+   7. Kategori + view toggle — token Gemini, tinggi 44px tetap
+   -------------------------------------------------------------------------- */
+#page-pos .category-picker-trigger {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  color: #0F2544;
+}
+#page-pos .category-picker-trigger:hover,
+#page-pos .category-picker-trigger[aria-expanded="true"] {
+  border-color: #1D4ED8;
+}
+/* Label seksi "Kategori": 11px uppercase + tracking (pengecualian token) */
+#page-pos .category-picker-trigger > span {
+  color: #64748B;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#page-pos .category-picker-trigger > strong {
+  color: #0F2544;
+  font-size: 14px;
+  font-weight: 600;
+}
+#page-pos .category-picker-trigger svg {
+  width: 18px;
+  height: 18px;
+  color: #64748B;
+}
+#page-pos .category-picker-menu {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02), 0 12px 32px -12px rgba(15, 37, 68, 0.14);
+}
+#page-pos .category-picker-option {
+  border-radius: 8px;
+  color: #475569;
+  font-size: 14px;
+}
+#page-pos .category-picker-option:hover {
+  background: #F8FAFC;
+}
+#page-pos .category-picker-option.active {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-weight: 700;
+}
+/* View toggle: wadah radius 12 bg #F8FAFC; aktif tint #DBEAFE */
+#page-pos .product-view-toggle {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+}
+#page-pos .product-view-toggle button {
+  border-radius: 8px;
+  color: #64748B;
+}
+#page-pos .product-view-toggle button.active {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+#page-pos .product-view-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+/* Chip kategori (bila tampil sebagai chip): pill 9999px, aktif #DBEAFE */
+#page-pos .category-row .chip {
+  border: 1px solid #E2E8F0;
+  border-radius: 9999px;
+  background: #FFFFFF;
+  color: #475569;
+  font-size: 13px;
+}
+#page-pos .category-row .chip.active {
+  background: #DBEAFE;
+  border-color: #BFDBFE;
+  color: #1D4ED8;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   8. Daftar produk — KUNCI GEOMETRI (<=800px, list view): pitch 65px,
+      thumb 46x46 radius 10, nama 15px, harga/stok 13px, 8 baris.
+      Kartu list: putih, border rgba(226,232,240,.85), radius 16px,
+      shadow token Gemini. Divider antar baris #E2E8F0.
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) {
+  #page-pos .product-grid[data-view="list"] {
+    background: #FFFFFF;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+  }
+  #page-pos .product-grid[data-view="list"] .product-card {
+    min-height: 65px;
+    padding: 8px 14px;
+    gap: 14px;
+  }
+  #page-pos .product-grid[data-view="list"] .product-image-frame {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+    border-radius: 10px;
+  }
+  #page-pos .product-grid[data-view="list"] .product-name {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+  #page-pos .product-grid[data-view="list"] .product-price,
+  #page-pos .product-grid[data-view="list"] .product-stock {
+    font-size: 13px;
+  }
+}
+/* Warna + status baris (semua lebar; ukuran desktop dipertahankan) */
+#page-pos .product-grid[data-view="list"] .product-card {
+  background: transparent;
+  color: #0F2544;
+}
+#page-pos .product-grid[data-view="list"] .product-card:hover {
+  background: #F8FAFC;
+}
+#page-pos .product-grid[data-view="list"] .product-card.in-cart {
+  background: #DBEAFE;
+}
+#page-pos .product-grid[data-view="list"] .product-card-wrap:not(:first-child) .product-card {
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
+}
+#page-pos .product-name {
+  color: #0F2544;
+  font-weight: 700;
+}
+#page-pos .product-name .hint {
+  color: #64748B;
+  font-size: 13px;
+  font-weight: 500;
+}
+#page-pos .product-price {
+  color: #1D4ED8;
+  font-weight: 700;
+}
+#page-pos .product-stock {
+  color: #64748B;
+}
+#page-pos .product-stock.low {
+  color: #DC2626;
+}
+#page-pos .product-stock::before {
+  color: #94A3B8;
+}
+/* Thumb: bg #F1F5F9 dipertahankan (di referensi thumb memang sedikit
+   lebih gelap dari latar); ikon placeholder redup #64748B, 22px */
+#page-pos .product-image-frame {
+  background: #F1F5F9;
+  border: 0;
+  border-radius: 10px;
+}
+#page-pos .product-image-placeholder svg {
+  width: 22px;
+  height: 22px;
+  color: #64748B;
+}
+/* Badge qty di pojok thumb: pill 9999px, primer, tabular-nums
+   (12px: badge angka, mengikuti pola corner-qty 11px Gemini) */
+#page-pos .product-qty-badge {
+  background: #1D4ED8;
+  border-radius: 9999px;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 800;
+}
+/* Favorit: idle redup, aktif primer; ikon 18px (token ikon tombol) */
+#page-pos .favorite-toggle {
+  color: #64748B;
+}
+#page-pos .favorite-toggle.active {
+  color: #1D4ED8;
+}
+#page-pos .favorite-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+#page-pos .product-card:disabled {
+  opacity: 0.55;
+}
+/* Grid view: kartu putih radius 16 shadow token; warna ikut token
+   (ukuran grid view dipertahankan dari polish.css) */
+#page-pos .product-grid[data-view="grid"] .product-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+}
+#page-pos .product-grid[data-view="grid"] .product-card:hover {
+  border-color: #BFDBFE;
+  background: #F8FAFC;
+}
+#page-pos .product-grid[data-view="grid"] .product-card.in-cart {
+  background: #DBEAFE;
+  border-color: #BFDBFE;
+}
+#page-pos .product-grid[data-view="grid"] .product-image-frame {
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 12px;
+  background: #F8FAFC;
+}
+#page-pos .empty {
+  color: #64748B;
+  font-size: 13px;
+}
+#page-pos .empty strong {
+  color: #475569;
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   9. Panel keranjang desktop — kartu putih radius 16 shadow token
+   -------------------------------------------------------------------------- */
+#page-pos .cart-panel {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+}
+#page-pos .catalog {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+}
+@media (max-width: 800px) {
+  /* Di HP katalog jadi transparan tanpa kartu (layout lama dipertahankan:
+     kartu list putih yang menonjol di atas bg #F6F7FB) */
+  #page-pos .catalog {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+#page-pos .cart-head {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+#page-pos .cart-head h2 {
+  font-size: 15px;
+}
+#page-pos .cart-count {
+  font-size: 13px;
+}
+#page-pos .cart-item {
+  border-color: rgba(226, 232, 240, 0.85);
+}
+#page-pos .cart-item-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+#page-pos .cart-item-price {
+  font-size: 14px;
+  font-weight: 700;
+}
+#page-pos .qty-controls {
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+}
+#page-pos .qty-controls button {
+  color: #0F2544;
+}
+#page-pos .qty-controls input {
+  color: #0F2544;
+  font-weight: 700;
+}
+#page-pos .mini-action {
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #0F2544;
+  font-size: 13px;
+}
+#page-pos .remove-item {
+  color: #64748B;
+  border-radius: 8px;
+}
+#page-pos .remove-item:hover {
+  color: #DC2626;
+}
+#page-pos .cart-summary {
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
+}
+#page-pos .summary-row {
+  font-size: 13px;
+}
+#page-pos .summary-row strong {
+  color: #0F2544;
+  font-weight: 600;
+}
+#page-pos .summary-row.discount strong {
+  color: #DC2626;
+}
+#page-pos .summary-total {
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
+}
+#page-pos .summary-total span {
+  font-size: 13px;
+  font-weight: 700;
+}
+#page-pos .shift-warning {
+  background: #DBEAFE;
+  border-bottom: 1px solid #BFDBFE;
+  border-radius: 16px 16px 0 0;
+  color: #0F2544;
+  font-size: 13px;
+}
+#page-pos .cart-empty {
+  color: #64748B;
+  font-size: 13px;
+}
+#page-pos .cart-empty strong {
+  color: #475569;
+}
+
+/* --------------------------------------------------------------------------
+   10. Floating cart bar mobile (.mobile-checkout) — bar putih, radius
+       atas 16px, border #E2E8F0, shadow token; link keranjang ghost,
+       tombol Bayar gradient. Teks >=13px, tinggi >=48px dipertahankan.
+   -------------------------------------------------------------------------- */
+.mobile-checkout:not([hidden]) {
+  background: #FFFFFF;
+  border: 0;
+  border-top: 1px solid #E2E8F0;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 16px rgba(15, 37, 68, 0.08);
+}
+.mobile-cart-link {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  color: #0F2544;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mobile-cart-link:hover {
+  background: #FFFFFF;
+}
+.mobile-cart-link #mobileItemCount {
+  color: #0F2544;
+  font-size: 13px;
+}
+.mobile-cart-link #mobileCartTotal {
+  color: #0F2544;
+  font-size: 13px;
+  font-weight: 800;
+}
+.mobile-pay-button {
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   11. Modal kasir (Preview keranjang / Diskon / Pembayaran / Struk) —
+       overlay rgba(15,23,42,.40) + blur 2px; konten radius 16px,
+       border rgba(226,232,240,.85), shadow token. Berlaku hanya saat
+       #page-pos aktif supaya modal halaman lain tidak ikut berubah.
+       Isi struk memakai inline style (tidak bisa/boleh diubah via CSS) —
+       hanya chrome modal + tombol foot yang diberi token.
+   -------------------------------------------------------------------------- */
+body:has(#page-pos.active) .modal-backdrop {
+  background: rgba(15, 23, 42, 0.40);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+body:has(#page-pos.active) .modal {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02), 0 20px 60px rgba(15, 37, 68, 0.16);
+}
+body:has(#page-pos.active) .modal-head {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+body:has(#page-pos.active) .modal-head h2 {
+  font-size: 16px;
+}
+body:has(#page-pos.active) .modal-close {
+  color: #64748B;
+  border-radius: 8px;
+  min-width: 44px;
+  min-height: 44px;
+}
+body:has(#page-pos.active) .modal-close:hover {
+  background: #F8FAFC;
+  color: #0F2544;
+}
+body:has(#page-pos.active) .modal-foot {
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
+}
+/* Preview keranjang (drawer mobile Gemini): baris + total */
+body:has(#page-pos.active) .modal .cart-preview-actions .button {
+  font-size: 13px;
+  font-weight: 600;
+}
+body:has(#page-pos.active) .modal .cart-preview-line {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+body:has(#page-pos.active) .modal .cart-preview-item strong {
+  color: #0F2544;
+  font-size: 14px;
+}
+body:has(#page-pos.active) .modal .cart-preview-line > strong {
+  color: #0F2544;
+  font-size: 14px;
+  font-weight: 700;
+}
+body:has(#page-pos.active) .modal .cart-preview-quantity-value {
+  color: #0F2544;
+  font-size: 14px;
+  font-weight: 700;
+}
+body:has(#page-pos.active) .modal .detail-row {
+  border-color: rgba(226, 232, 240, 0.85);
+  font-size: 13px;
+}
+body:has(#page-pos.active) .modal .detail-row span {
+  color: #64748B;
+}
+body:has(#page-pos.active) .modal .detail-row strong {
+  color: #0F2544;
+}
+/* Pembayaran: kotak total + kembalian, tombol uang pas */
+body:has(#page-pos.active) .modal .pay-amount {
+  background: #F8FAFC;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 12px;
+}
+body:has(#page-pos.active) .modal .pay-amount span {
+  color: #64748B;
+  font-size: 13px;
+  font-weight: 600;
+}
+body:has(#page-pos.active) .modal .pay-amount strong {
+  color: #1D4ED8;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+body:has(#page-pos.active) .modal .method-tab {
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  color: #475569;
+  font-size: 13px;
+}
+body:has(#page-pos.active) .modal .method-tab.active {
+  border-color: #1D4ED8;
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-weight: 700;
+}
+body:has(#page-pos.active) .modal .quick-cash button {
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  background: #F8FAFC;
+  color: #0F2544;
+  font-size: 13px;
+  font-weight: 600;
+}
+body:has(#page-pos.active) .modal .quick-cash button:hover {
+  background: #FFFFFF;
+  border-color: #BFDBFE;
+}
+body:has(#page-pos.active) .modal .change-box {
+  background: #DBEAFE;
+  border: 1px solid rgba(29, 78, 216, 0.25);
+  border-radius: 12px;
+  color: #0F2544;
+  font-size: 13px;
+}
+body:has(#page-pos.active) .modal .change-box strong {
+  color: #1D4ED8;
+  font-size: 20px;
+  font-weight: 800;
+}
+/* Toast kasir: navy, radius 12 */
+body:has(#page-pos.active) .toast {
+  background: #0F2544;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 13px;
+}

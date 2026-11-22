@@ -1,0 +1,439 @@
+/* ==========================================================================
+   polish-gemini2-icons.css — Ikon Phosphor (Gemini total), 2026-11-22
+   --------------------------------------------------------------------------
+   Sumber SVG: Phosphor Icons @2.1.1 (MIT), @phosphor-icons/core via unpkg
+   (regular/<nama>.svg, bold/<nama>-bold.svg, duotone/<nama>-duotone.svg,
+   fill/star-fill.svg). Semua ikon di-inline sebagai data-URI di file ini —
+   OFFLINE, tanpa CDN saat load (0 request ke unpkg/jsdelivr).
+   Varian mengikuti prototipe Gemini (FastQ_POS_-_Polished_UI__1__0_xch2.html):
+   nav + jam + outlet + transfer = duotone; pause/plus/minus/x/check/caret
+   aksi = bold; search/scan/printer/download/cube = regular.
+   Mekanisme: sama seperti polish.css §0 — SVG inline asli disembunyikan
+   (display:none) lalu ::before/::after mask menggantikannya, mengikuti
+   currentColor (biru saat aktif, abu saat pasif). Ukuran kotak ikon = nilai
+   TERUKUR live sebelum perubahan (probe-before.json); geometri kasir
+   (pitch 65, thumb 46, nama 15, harga/stok 13) TIDAK disentuh.
+   File ini HARUS dimuat SETELAH semua polish*.css lain (paling akhir),
+   karena menimpa aturan mask polish.css §0 (nav pos/shift, sync-pill).
+   --------------------------------------------------------------------------
+   Pemetaan (lama -> Phosphor baru):
+   brand-mark            : TIDAK disentuh — logo asli fastq-cart.png milik
+                           Rizky (polish-logo.css, perintah 2026-11-22 05:40;
+                           ::before dimatikan !important di sana).
+   nav Kasir             : receipt Feather   -> cash-register duotone 20/22
+   nav Produk & stok     : cube Feather      -> package duotone 19
+   nav Shift & kas       : clock Feather     -> vault duotone 20/22
+   nav Absen             : user-check custom -> fingerprint duotone 19
+   nav Laporan           : bar-chart Feather -> chart-bar duotone 19
+   nav Outlet            : home Feather      -> buildings duotone 19
+   nav Pengguna          : user+check custom -> shield-check duotone 19
+   nav Lainnya           : 3 titik           -> list bold 19
+   sync-pill             : refresh-cw Feather-> arrows-clockwise bold 18/24
+   menu header (mobile)  : hamburger Feather -> list bold 24
+   user-chevron          : chevron Feather   -> caret-down regular 20 (::after)
+   jam topbar            : (tanpa ikon)      -> clock duotone 16 (::before)
+   side-note             : (tanpa ikon)      -> hard-drives duotone 18
+   search kasir/produk   : search Feather    -> magnifying-glass regular 18
+   scan barcode          : scan Feather      -> scan regular 18
+   Tahan                 : batang CSS        -> pause bold 18
+   caret kategori        : chevron Feather   -> caret-down bold 18 (::after)
+   caret custom-select   : chevron Feather   -> caret-down regular 18 (::after)
+   outlet switcher       : (tanpa ikon)      -> map-pin duotone 16 (::before)
+   toggle list/grid      : list/grid Feather -> list bold / squares-four 18
+   favorit               : star Feather      -> star regular 18
+                           (aktif: star FILL, menggantikan fill:currentColor)
+   placeholder produk   : cube Feather      -> cube regular 22
+   keranjang kosong      : cart Feather      -> shopping-bag regular 35
+   qty - / +             : teks - / +        -> minus/plus bold 18
+   hapus item / tutup    : teks x            -> x bold 18 (modal 20, split 16,
+                           drawer 18; .mobile-cart-drawer-close 32px)
+   Cetak / Template struk: (tanpa ikon)      -> printer regular 16
+   Ekspor CSV            : (tanpa ikon)      -> download-simple regular 16
+   Tambah produk/pengguna/outlet: (tanpa ikon) -> plus bold 16
+   Absen masuk/pulang    : (tanpa ikon)      -> sign-in/sign-out bold 16
+   Catat transfer        : (tanpa ikon)      -> arrows-left-right duotone 18
+   link keranjang mobile : (tanpa ikon)      -> shopping-bag regular 20
+   tanggal shift         : calendar Feather  -> calendar-blank regular 14
+   ikon shift kosong     : calendar Feather  -> calendar-blank regular 21
+   opsi select terpilih  : (tanpa ceklis)    -> check bold 16 (::after)
+   link lokasi absen     : (tanpa ikon)      -> map-pin duotone 14
+   TIDAK diubah (sengaja): .status (cekllis dihapus per DESIGN-DIRECTION),
+   .category-picker-option (ceklis disembunyikan sengaja), heading approval
+   diskon (ikon kubus dihapus sengaja di polish-extra.css), tombol
+   Buka/Tutup shift (prototipe tidak memberi ikon di sana; sign-in/out
+   prototipe = tombol Masuk/Pulang absen), tombol Bayar/Diskon/Kosongkan/
+   Ditahan, Impor CSV (ikon download akan salah arah), paginasi ‹ ›.
+   Ikon terunduh tapi tanpa host di markup: storefront, user, user-check,
+   clock/x/check/plus regular (prototipe memakai fingerprint untuk Absen,
+   bukan user-check; brand memakai logo asli, bukan storefront).
+   ========================================================================== */
+
+:root {
+  --ph2-magnifying-glass:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M229.66%2C218.34l-50.07-50.06a88.11%2C88.11%2C0%2C1%2C0-11.31%2C11.31l50.06%2C50.07a8%2C8%2C0%2C0%2C0%2C11.32-11.32ZM40%2C112a72%2C72%2C0%2C1%2C1%2C72%2C72A72.08%2C72.08%2C0%2C0%2C1%2C40%2C112Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-scan:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M224%2C40V80a8%2C8%2C0%2C0%2C1-16%2C0V48H176a8%2C8%2C0%2C0%2C1%2C0-16h40A8%2C8%2C0%2C0%2C1%2C224%2C40ZM80%2C208H48V176a8%2C8%2C0%2C0%2C0-16%2C0v40a8%2C8%2C0%2C0%2C0%2C8%2C8H80a8%2C8%2C0%2C0%2C0%2C0-16Zm136-40a8%2C8%2C0%2C0%2C0-8%2C8v32H176a8%2C8%2C0%2C0%2C0%2C0%2C16h40a8%2C8%2C0%2C0%2C0%2C8-8V176A8%2C8%2C0%2C0%2C0%2C216%2C168ZM40%2C88a8%2C8%2C0%2C0%2C0%2C8-8V48H80a8%2C8%2C0%2C0%2C0%2C0-16H40a8%2C8%2C0%2C0%2C0-8%2C8V80A8%2C8%2C0%2C0%2C0%2C40%2C88ZM80%2C72h96a8%2C8%2C0%2C0%2C1%2C8%2C8v96a8%2C8%2C0%2C0%2C1-8%2C8H80a8%2C8%2C0%2C0%2C1-8-8V80A8%2C8%2C0%2C0%2C1%2C80%2C72Zm8%2C96h80V88H88Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-pause-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M200%2C28H160a20%2C20%2C0%2C0%2C0-20%2C20V208a20%2C20%2C0%2C0%2C0%2C20%2C20h40a20%2C20%2C0%2C0%2C0%2C20-20V48A20%2C20%2C0%2C0%2C0%2C200%2C28Zm-4%2C176H164V52h32ZM96%2C28H56A20%2C20%2C0%2C0%2C0%2C36%2C48V208a20%2C20%2C0%2C0%2C0%2C20%2C20H96a20%2C20%2C0%2C0%2C0%2C20-20V48A20%2C20%2C0%2C0%2C0%2C96%2C28ZM92%2C204H60V52H92Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-caret-down-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M216.49%2C104.49l-80%2C80a12%2C12%2C0%2C0%2C1-17%2C0l-80-80a12%2C12%2C0%2C0%2C1%2C17-17L128%2C159l71.51-71.52a12%2C12%2C0%2C0%2C1%2C17%2C17Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-caret-down:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M213.66%2C101.66l-80%2C80a8%2C8%2C0%2C0%2C1-11.32%2C0l-80-80A8%2C8%2C0%2C0%2C1%2C53.66%2C90.34L128%2C164.69l74.34-74.35a8%2C8%2C0%2C0%2C1%2C11.32%2C11.32Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-list-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M228%2C128a12%2C12%2C0%2C0%2C1-12%2C12H40a12%2C12%2C0%2C0%2C1%2C0-24H216A12%2C12%2C0%2C0%2C1%2C228%2C128ZM40%2C76H216a12%2C12%2C0%2C0%2C0%2C0-24H40a12%2C12%2C0%2C0%2C0%2C0%2C24ZM216%2C180H40a12%2C12%2C0%2C0%2C0%2C0%2C24H216a12%2C12%2C0%2C0%2C0%2C0-24Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-squares-four:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M104%2C40H56A16%2C16%2C0%2C0%2C0%2C40%2C56v48a16%2C16%2C0%2C0%2C0%2C16%2C16h48a16%2C16%2C0%2C0%2C0%2C16-16V56A16%2C16%2C0%2C0%2C0%2C104%2C40Zm0%2C64H56V56h48v48Zm96-64H152a16%2C16%2C0%2C0%2C0-16%2C16v48a16%2C16%2C0%2C0%2C0%2C16%2C16h48a16%2C16%2C0%2C0%2C0%2C16-16V56A16%2C16%2C0%2C0%2C0%2C200%2C40Zm0%2C64H152V56h48v48Zm-96%2C32H56a16%2C16%2C0%2C0%2C0-16%2C16v48a16%2C16%2C0%2C0%2C0%2C16%2C16h48a16%2C16%2C0%2C0%2C0%2C16-16V152A16%2C16%2C0%2C0%2C0%2C104%2C136Zm0%2C64H56V152h48v48Zm96-64H152a16%2C16%2C0%2C0%2C0-16%2C16v48a16%2C16%2C0%2C0%2C0%2C16%2C16h48a16%2C16%2C0%2C0%2C0%2C16-16V152A16%2C16%2C0%2C0%2C0%2C200%2C136Zm0%2C64H152V152h48v48Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-star:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M239.18%2C97.26A16.38%2C16.38%2C0%2C0%2C0%2C224.92%2C86l-59-4.76L143.14%2C26.15a16.36%2C16.36%2C0%2C0%2C0-30.27%2C0L90.11%2C81.23%2C31.08%2C86a16.46%2C16.46%2C0%2C0%2C0-9.37%2C28.86l45%2C38.83L53%2C211.75a16.38%2C16.38%2C0%2C0%2C0%2C24.5%2C17.82L128%2C198.49l50.53%2C31.08A16.4%2C16.4%2C0%2C0%2C0%2C203%2C211.75l-13.76-58.07%2C45-38.83A16.43%2C16.43%2C0%2C0%2C0%2C239.18%2C97.26Zm-15.34%2C5.47-48.7%2C42a8%2C8%2C0%2C0%2C0-2.56%2C7.91l14.88%2C62.8a.37.37%2C0%2C0%2C1-.17.48c-.18.14-.23.11-.38%2C0l-54.72-33.65a8%2C8%2C0%2C0%2C0-8.38%2C0L69.09%2C215.94c-.15.09-.19.12-.38%2C0a.37.37%2C0%2C0%2C1-.17-.48l14.88-62.8a8%2C8%2C0%2C0%2C0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8%2C8%2C0%2C0%2C0%2C103%2C91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153%2C91.86a8%2C8%2C0%2C0%2C0%2C6.75%2C4.92l63.92%2C5.16c.15%2C0%2C.24%2C0%2C.33.29S224%2C102.63%2C223.84%2C102.73Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-star-fill:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M234.29%2C114.85l-45%2C38.83L203%2C211.75a16.4%2C16.4%2C0%2C0%2C1-24.5%2C17.82L128%2C198.49%2C77.47%2C229.57A16.4%2C16.4%2C0%2C0%2C1%2C53%2C211.75l13.76-58.07-45-38.83A16.46%2C16.46%2C0%2C0%2C1%2C31.08%2C86l59-4.76%2C22.76-55.08a16.36%2C16.36%2C0%2C0%2C1%2C30.27%2C0l22.75%2C55.08%2C59%2C4.76a16.46%2C16.46%2C0%2C0%2C1%2C9.37%2C28.86Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-cube:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M223.68%2C66.15%2C135.68%2C18h0a15.88%2C15.88%2C0%2C0%2C0-15.36%2C0l-88%2C48.17a16%2C16%2C0%2C0%2C0-8.32%2C14v95.64a16%2C16%2C0%2C0%2C0%2C8.32%2C14l88%2C48.17a15.88%2C15.88%2C0%2C0%2C0%2C15.36%2C0l88-48.17a16%2C16%2C0%2C0%2C0%2C8.32-14V80.18A16%2C16%2C0%2C0%2C0%2C223.68%2C66.15ZM128%2C32h0l80.34%2C44L128%2C120%2C47.66%2C76ZM40%2C90l80%2C43.78v85.79L40%2C175.82Zm96%2C129.57V133.82L216%2C90v85.78Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-shopping-bag:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M216%2C40H40A16%2C16%2C0%2C0%2C0%2C24%2C56V200a16%2C16%2C0%2C0%2C0%2C16%2C16H216a16%2C16%2C0%2C0%2C0%2C16-16V56A16%2C16%2C0%2C0%2C0%2C216%2C40Zm0%2C160H40V56H216V200ZM176%2C88a48%2C48%2C0%2C0%2C1-96%2C0%2C8%2C8%2C0%2C0%2C1%2C16%2C0%2C32%2C32%2C0%2C0%2C0%2C64%2C0%2C8%2C8%2C0%2C0%2C1%2C16%2C0Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-plus-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M228%2C128a12%2C12%2C0%2C0%2C1-12%2C12H140v76a12%2C12%2C0%2C0%2C1-24%2C0V140H40a12%2C12%2C0%2C0%2C1%2C0-24h76V40a12%2C12%2C0%2C0%2C1%2C24%2C0v76h76A12%2C12%2C0%2C0%2C1%2C228%2C128Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-minus-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M228%2C128a12%2C12%2C0%2C0%2C1-12%2C12H40a12%2C12%2C0%2C0%2C1%2C0-24H216A12%2C12%2C0%2C0%2C1%2C228%2C128Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-x-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M208.49%2C191.51a12%2C12%2C0%2C0%2C1-17%2C17L128%2C145%2C64.49%2C208.49a12%2C12%2C0%2C0%2C1-17-17L111%2C128%2C47.51%2C64.49a12%2C12%2C0%2C0%2C1%2C17-17L128%2C111l63.51-63.52a12%2C12%2C0%2C0%2C1%2C17%2C17L145%2C128Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-check-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M232.49%2C80.49l-128%2C128a12%2C12%2C0%2C0%2C1-17%2C0l-56-56a12%2C12%2C0%2C1%2C1%2C17-17L96%2C183%2C215.51%2C63.51a12%2C12%2C0%2C0%2C1%2C17%2C17Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-printer:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M214.67%2C72H200V40a8%2C8%2C0%2C0%2C0-8-8H64a8%2C8%2C0%2C0%2C0-8%2C8V72H41.33C27.36%2C72%2C16%2C82.77%2C16%2C96v80a8%2C8%2C0%2C0%2C0%2C8%2C8H56v32a8%2C8%2C0%2C0%2C0%2C8%2C8H192a8%2C8%2C0%2C0%2C0%2C8-8V184h32a8%2C8%2C0%2C0%2C0%2C8-8V96C240%2C82.77%2C228.64%2C72%2C214.67%2C72ZM72%2C48H184V72H72ZM184%2C208H72V160H184Zm40-40H200V152a8%2C8%2C0%2C0%2C0-8-8H64a8%2C8%2C0%2C0%2C0-8%2C8v16H32V96c0-4.41%2C4.19-8%2C9.33-8H214.67c5.14%2C0%2C9.33%2C3.59%2C9.33%2C8Zm-24-52a12%2C12%2C0%2C1%2C1-12-12A12%2C12%2C0%2C0%2C1%2C200%2C116Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-download-simple:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M224%2C144v64a8%2C8%2C0%2C0%2C1-8%2C8H40a8%2C8%2C0%2C0%2C1-8-8V144a8%2C8%2C0%2C0%2C1%2C16%2C0v56H208V144a8%2C8%2C0%2C0%2C1%2C16%2C0Zm-101.66%2C5.66a8%2C8%2C0%2C0%2C0%2C11.32%2C0l40-40a8%2C8%2C0%2C0%2C0-11.32-11.32L136%2C124.69V32a8%2C8%2C0%2C0%2C0-16%2C0v92.69L93.66%2C98.34a8%2C8%2C0%2C0%2C0-11.32%2C11.32Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-sign-in-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M144.49%2C136.49l-40%2C40a12%2C12%2C0%2C0%2C1-17-17L107%2C140H24a12%2C12%2C0%2C0%2C1%2C0-24h83L87.51%2C96.49a12%2C12%2C0%2C0%2C1%2C17-17l40%2C40A12%2C12%2C0%2C0%2C1%2C144.49%2C136.49ZM200%2C28H136a12%2C12%2C0%2C0%2C0%2C0%2C24h52V204H136a12%2C12%2C0%2C0%2C0%2C0%2C24h64a12%2C12%2C0%2C0%2C0%2C12-12V40A12%2C12%2C0%2C0%2C0%2C200%2C28Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-sign-out-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M124%2C216a12%2C12%2C0%2C0%2C1-12%2C12H48a12%2C12%2C0%2C0%2C1-12-12V40A12%2C12%2C0%2C0%2C1%2C48%2C28h64a12%2C12%2C0%2C0%2C1%2C0%2C24H60V204h52A12%2C12%2C0%2C0%2C1%2C124%2C216Zm108.49-96.49-40-40a12%2C12%2C0%2C0%2C0-17%2C17L195%2C116H112a12%2C12%2C0%2C0%2C0%2C0%2C24h83l-19.52%2C19.51a12%2C12%2C0%2C0%2C0%2C17%2C17l40-40A12%2C12%2C0%2C0%2C0%2C232.49%2C119.51Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-arrows-clockwise-bold:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M228%2C48V96a12%2C12%2C0%2C0%2C1-12%2C12H168a12%2C12%2C0%2C0%2C1%2C0-24h19l-7.8-7.8a75.55%2C75.55%2C0%2C0%2C0-53.32-22.26h-.43A75.49%2C75.49%2C0%2C0%2C0%2C72.39%2C75.57%2C12%2C12%2C0%2C1%2C1%2C55.61%2C58.41a99.38%2C99.38%2C0%2C0%2C1%2C69.87-28.47H126A99.42%2C99.42%2C0%2C0%2C1%2C196.2%2C59.23L204%2C67V48a12%2C12%2C0%2C0%2C1%2C24%2C0ZM183.61%2C180.43a75.49%2C75.49%2C0%2C0%2C1-53.09%2C21.63h-.43A75.55%2C75.55%2C0%2C0%2C1%2C76.77%2C179.8L69%2C172H88a12%2C12%2C0%2C0%2C0%2C0-24H40a12%2C12%2C0%2C0%2C0-12%2C12v48a12%2C12%2C0%2C0%2C0%2C24%2C0V189l7.8%2C7.8A99.42%2C99.42%2C0%2C0%2C0%2C130%2C226.06h.56a99.38%2C99.38%2C0%2C0%2C0%2C69.87-28.47%2C12%2C12%2C0%2C0%2C0-16.78-17.16Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-calendar-blank:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M208%2C32H184V24a8%2C8%2C0%2C0%2C0-16%2C0v8H88V24a8%2C8%2C0%2C0%2C0-16%2C0v8H48A16%2C16%2C0%2C0%2C0%2C32%2C48V208a16%2C16%2C0%2C0%2C0%2C16%2C16H208a16%2C16%2C0%2C0%2C0%2C16-16V48A16%2C16%2C0%2C0%2C0%2C208%2C32ZM72%2C48v8a8%2C8%2C0%2C0%2C0%2C16%2C0V48h80v8a8%2C8%2C0%2C0%2C0%2C16%2C0V48h24V80H48V48ZM208%2C208H48V96H208V208Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-cash-register-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M232%2C160H24L46.49%2C70.06A8%2C8%2C0%2C0%2C1%2C54.25%2C64h147.5a8%2C8%2C0%2C0%2C1%2C7.76%2C6.06Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M239.76%2C158.06%2C217.28%2C68.12A16%2C16%2C0%2C0%2C0%2C201.75%2C56H136V40a16%2C16%2C0%2C0%2C0-16-16H80A16%2C16%2C0%2C0%2C0%2C64%2C40V56H54.25A16%2C16%2C0%2C0%2C0%2C38.72%2C68.12L16.24%2C158.06A7.93%2C7.93%2C0%2C0%2C0%2C16%2C160v32a16%2C16%2C0%2C0%2C0%2C16%2C16H224a16%2C16%2C0%2C0%2C0%2C16-16V160A7.93%2C7.93%2C0%2C0%2C0%2C239.76%2C158.06ZM80%2C40h40V56H80ZM54.25%2C72h147.5l20%2C80H34.25ZM32%2C192V168H224v24ZM64%2C96a8%2C8%2C0%2C0%2C1%2C8-8H88a8%2C8%2C0%2C0%2C1%2C0%2C16H72A8%2C8%2C0%2C0%2C1%2C64%2C96Zm48%2C0a8%2C8%2C0%2C0%2C1%2C8-8h16a8%2C8%2C0%2C0%2C1%2C0%2C16H120A8%2C8%2C0%2C0%2C1%2C112%2C96Zm48%2C0a8%2C8%2C0%2C0%2C1%2C8-8h16a8%2C8%2C0%2C0%2C1%2C0%2C16H168A8%2C8%2C0%2C0%2C1%2C160%2C96ZM64%2C128a8%2C8%2C0%2C0%2C1%2C8-8H88a8%2C8%2C0%2C0%2C1%2C0%2C16H72A8%2C8%2C0%2C0%2C1%2C64%2C128Zm48%2C0a8%2C8%2C0%2C0%2C1%2C8-8h16a8%2C8%2C0%2C0%2C1%2C0%2C16H120A8%2C8%2C0%2C0%2C1%2C112%2C128Zm48%2C0a8%2C8%2C0%2C0%2C1%2C8-8h16a8%2C8%2C0%2C0%2C1%2C0%2C16H168A8%2C8%2C0%2C0%2C1%2C160%2C128Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-package-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M128%2C129.09V232a8%2C8%2C0%2C0%2C1-3.84-1l-88-48.18a8%2C8%2C0%2C0%2C1-4.16-7V80.18a8%2C8%2C0%2C0%2C1%2C.7-3.25Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M223.68%2C66.15%2C135.68%2C18a15.88%2C15.88%2C0%2C0%2C0-15.36%2C0l-88%2C48.17a16%2C16%2C0%2C0%2C0-8.32%2C14v95.64a16%2C16%2C0%2C0%2C0%2C8.32%2C14l88%2C48.17a15.88%2C15.88%2C0%2C0%2C0%2C15.36%2C0l88-48.17a16%2C16%2C0%2C0%2C0%2C8.32-14V80.18A16%2C16%2C0%2C0%2C0%2C223.68%2C66.15ZM128%2C32l80.34%2C44-29.77%2C16.3-80.35-44ZM128%2C120%2C47.66%2C76l33.9-18.56%2C80.34%2C44ZM40%2C90l80%2C43.78v85.79L40%2C175.82Zm176%2C85.78h0l-80%2C43.79V133.82l32-17.51V152a8%2C8%2C0%2C0%2C0%2C16%2C0V107.55L216%2C90v85.77Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-vault-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M216%2C48H40a8%2C8%2C0%2C0%2C0-8%2C8V192a8%2C8%2C0%2C0%2C0%2C8%2C8H216a8%2C8%2C0%2C0%2C0%2C8-8V56A8%2C8%2C0%2C0%2C0%2C216%2C48ZM152%2C168a40%2C40%2C0%2C1%2C1%2C40-40A40%2C40%2C0%2C0%2C1%2C152%2C168Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M216%2C40H40A16%2C16%2C0%2C0%2C0%2C24%2C56V192a16%2C16%2C0%2C0%2C0%2C16%2C16H56v16a8%2C8%2C0%2C0%2C0%2C16%2C0V208H184v16a8%2C8%2C0%2C0%2C0%2C16%2C0V208h16a16%2C16%2C0%2C0%2C0%2C16-16V56A16%2C16%2C0%2C0%2C0%2C216%2C40Zm0%2C152H40V56H216v64H199.32a48%2C48%2C0%2C1%2C0%2C0%2C16H216v56Zm-50.16-72a16%2C16%2C0%2C1%2C0%2C0%2C16H183a32%2C32%2C0%2C1%2C1%2C0-16Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-fingerprint-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M224%2C128a96%2C96%2C0%2C1%2C1-96-96A96%2C96%2C0%2C0%2C1%2C224%2C128Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M72%2C128a134.63%2C134.63%2C0%2C0%2C1-14.16%2C60.47%2C8%2C8%2C0%2C1%2C1-14.32-7.12A118.8%2C118.8%2C0%2C0%2C0%2C56%2C128%2C71.73%2C71.73%2C0%2C0%2C1%2C83%2C71.8%2C8%2C8%2C0%2C1%2C1%2C93%2C84.29%2C55.76%2C55.76%2C0%2C0%2C0%2C72%2C128Zm56-8a8%2C8%2C0%2C0%2C0-8%2C8%2C184.12%2C184.12%2C0%2C0%2C1-23%2C89.1%2C8%2C8%2C0%2C0%2C0%2C14%2C7.76A200.19%2C200.19%2C0%2C0%2C0%2C136%2C128%2C8%2C8%2C0%2C0%2C0%2C128%2C120Zm0-32a40%2C40%2C0%2C0%2C0-40%2C40%2C8%2C8%2C0%2C0%2C0%2C16%2C0%2C24%2C24%2C0%2C0%2C1%2C48%2C0%2C214.09%2C214.09%2C0%2C0%2C1-20.51%2C92A8%2C8%2C0%2C1%2C0%2C146%2C226.83%2C230%2C230%2C0%2C0%2C0%2C168%2C128%2C40%2C40%2C0%2C0%2C0%2C128%2C88Zm0-64A104.11%2C104.11%2C0%2C0%2C0%2C24%2C128a87.76%2C87.76%2C0%2C0%2C1-5%2C29.33%2C8%2C8%2C0%2C0%2C0%2C15.09%2C5.33A103.9%2C103.9%2C0%2C0%2C0%2C40%2C128a88%2C88%2C0%2C0%2C1%2C176%2C0%2C282.24%2C282.24%2C0%2C0%2C1-5.29%2C54.45%2C8%2C8%2C0%2C0%2C0%2C6.3%2C9.4%2C8.22%2C8.22%2C0%2C0%2C0%2C1.55.15%2C8%2C8%2C0%2C0%2C0%2C7.84-6.45A298.37%2C298.37%2C0%2C0%2C0%2C232%2C128%2C104.12%2C104.12%2C0%2C0%2C0%2C128%2C24ZM94.4%2C152.17A8%2C8%2C0%2C0%2C0%2C85%2C158.42a151%2C151%2C0%2C0%2C1-17.21%2C45.44%2C8%2C8%2C0%2C0%2C0%2C13.86%2C8%2C166.67%2C166.67%2C0%2C0%2C0%2C19-50.25A8%2C8%2C0%2C0%2C0%2C94.4%2C152.17ZM128%2C56a72.85%2C72.85%2C0%2C0%2C0-9%2C.56%2C8%2C8%2C0%2C0%2C0%2C2%2C15.87A56.08%2C56.08%2C0%2C0%2C1%2C184%2C128a252.12%2C252.12%2C0%2C0%2C1-1.92%2C31A8%2C8%2C0%2C0%2C0%2C189%2C168a8.39%2C8.39%2C0%2C0%2C0%2C1%2C.06%2C8%2C8%2C0%2C0%2C0%2C7.92-7%2C266.48%2C266.48%2C0%2C0%2C0%2C2-33A72.08%2C72.08%2C0%2C0%2C0%2C128%2C56Zm57.93%2C128.25a8%2C8%2C0%2C0%2C0-9.75%2C5.75c-1.46%2C5.69-3.15%2C11.4-5%2C17a8%2C8%2C0%2C0%2C0%2C5%2C10.13%2C7.88%2C7.88%2C0%2C0%2C0%2C2.55.42%2C8%2C8%2C0%2C0%2C0%2C7.58-5.46c2-5.92%2C3.79-12%2C5.35-18.05A8%2C8%2C0%2C0%2C0%2C185.94%2C184.26Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-chart-bar-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M208%2C40V208H152V40Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M224%2C200h-8V40a8%2C8%2C0%2C0%2C0-8-8H152a8%2C8%2C0%2C0%2C0-8%2C8V80H96a8%2C8%2C0%2C0%2C0-8%2C8v40H48a8%2C8%2C0%2C0%2C0-8%2C8v64H32a8%2C8%2C0%2C0%2C0%2C0%2C16H224a8%2C8%2C0%2C0%2C0%2C0-16ZM160%2C48h40V200H160ZM104%2C96h40V200H104ZM56%2C144H88v56H56Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-buildings-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M136%2C32V216H40V85.35a8%2C8%2C0%2C0%2C1%2C3.56-6.66l80-53.33A8%2C8%2C0%2C0%2C1%2C136%2C32Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M240%2C208H224V96a16%2C16%2C0%2C0%2C0-16-16H144V32a16%2C16%2C0%2C0%2C0-24.88-13.32L39.12%2C72A16%2C16%2C0%2C0%2C0%2C32%2C85.34V208H16a8%2C8%2C0%2C0%2C0%2C0%2C16H240a8%2C8%2C0%2C0%2C0%2C0-16ZM208%2C96V208H144V96ZM48%2C85.34%2C128%2C32V208H48ZM112%2C112v16a8%2C8%2C0%2C0%2C1-16%2C0V112a8%2C8%2C0%2C1%2C1%2C16%2C0Zm-32%2C0v16a8%2C8%2C0%2C0%2C1-16%2C0V112a8%2C8%2C0%2C1%2C1%2C16%2C0Zm0%2C56v16a8%2C8%2C0%2C0%2C1-16%2C0V168a8%2C8%2C0%2C0%2C1%2C16%2C0Zm32%2C0v16a8%2C8%2C0%2C0%2C1-16%2C0V168a8%2C8%2C0%2C0%2C1%2C16%2C0Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-shield-check-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M216%2C56v56c0%2C96-88%2C120-88%2C120S40%2C208%2C40%2C112V56a8%2C8%2C0%2C0%2C1%2C8-8H208A8%2C8%2C0%2C0%2C1%2C216%2C56Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M208%2C40H48A16%2C16%2C0%2C0%2C0%2C32%2C56v56c0%2C52.72%2C25.52%2C84.67%2C46.93%2C102.19%2C23.06%2C18.86%2C46%2C25.26%2C47%2C25.53a8%2C8%2C0%2C0%2C0%2C4.2%2C0c1-.27%2C23.91-6.67%2C47-25.53C198.48%2C196.67%2C224%2C164.72%2C224%2C112V56A16%2C16%2C0%2C0%2C0%2C208%2C40Zm0%2C72c0%2C37.07-13.66%2C67.16-40.6%2C89.42A129.3%2C129.3%2C0%2C0%2C1%2C128%2C223.62a128.25%2C128.25%2C0%2C0%2C1-38.92-21.81C61.82%2C179.51%2C48%2C149.3%2C48%2C112l0-56%2C160%2C0ZM82.34%2C141.66a8%2C8%2C0%2C0%2C1%2C11.32-11.32L112%2C148.69l50.34-50.35a8%2C8%2C0%2C0%2C1%2C11.32%2C11.32l-56%2C56a8%2C8%2C0%2C0%2C1-11.32%2C0Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-map-pin-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M128%2C24a80%2C80%2C0%2C0%2C0-80%2C80c0%2C72%2C80%2C128%2C80%2C128s80-56%2C80-128A80%2C80%2C0%2C0%2C0%2C128%2C24Zm0%2C112a32%2C32%2C0%2C1%2C1%2C32-32A32%2C32%2C0%2C0%2C1%2C128%2C136Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M128%2C64a40%2C40%2C0%2C1%2C0%2C40%2C40A40%2C40%2C0%2C0%2C0%2C128%2C64Zm0%2C64a24%2C24%2C0%2C1%2C1%2C24-24A24%2C24%2C0%2C0%2C1%2C128%2C128Zm0-112a88.1%2C88.1%2C0%2C0%2C0-88%2C88c0%2C31.4%2C14.51%2C64.68%2C42%2C96.25a254.19%2C254.19%2C0%2C0%2C0%2C41.45%2C38.3%2C8%2C8%2C0%2C0%2C0%2C9.18%2C0A254.19%2C254.19%2C0%2C0%2C0%2C174%2C200.25c27.45-31.57%2C42-64.85%2C42-96.25A88.1%2C88.1%2C0%2C0%2C0%2C128%2C16Zm0%2C206c-16.53-13-72-60.75-72-118a72%2C72%2C0%2C0%2C1%2C144%2C0C200%2C161.23%2C144.53%2C209%2C128%2C222Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-hard-drives-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M216%2C152v48a8%2C8%2C0%2C0%2C1-8%2C8H48a8%2C8%2C0%2C0%2C1-8-8V152a8%2C8%2C0%2C0%2C1%2C8-8H208A8%2C8%2C0%2C0%2C1%2C216%2C152ZM208%2C48H48a8%2C8%2C0%2C0%2C0-8%2C8v48a8%2C8%2C0%2C0%2C0%2C8%2C8H208a8%2C8%2C0%2C0%2C0%2C8-8V56A8%2C8%2C0%2C0%2C0%2C208%2C48Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M208%2C136H48a16%2C16%2C0%2C0%2C0-16%2C16v48a16%2C16%2C0%2C0%2C0%2C16%2C16H208a16%2C16%2C0%2C0%2C0%2C16-16V152A16%2C16%2C0%2C0%2C0%2C208%2C136Zm0%2C64H48V152H208v48Zm0-160H48A16%2C16%2C0%2C0%2C0%2C32%2C56v48a16%2C16%2C0%2C0%2C0%2C16%2C16H208a16%2C16%2C0%2C0%2C0%2C16-16V56A16%2C16%2C0%2C0%2C0%2C208%2C40Zm0%2C64H48V56H208v48ZM192%2C80a12%2C12%2C0%2C1%2C1-12-12A12%2C12%2C0%2C0%2C1%2C192%2C80Zm0%2C96a12%2C12%2C0%2C1%2C1-12-12A12%2C12%2C0%2C0%2C1%2C192%2C176Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-clock-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M224%2C128a96%2C96%2C0%2C1%2C1-96-96A96%2C96%2C0%2C0%2C1%2C224%2C128Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M128%2C24A104%2C104%2C0%2C1%2C0%2C232%2C128%2C104.11%2C104.11%2C0%2C0%2C0%2C128%2C24Zm0%2C192a88%2C88%2C0%2C1%2C1%2C88-88A88.1%2C88.1%2C0%2C0%2C1%2C128%2C216Zm64-88a8%2C8%2C0%2C0%2C1-8%2C8H128a8%2C8%2C0%2C0%2C1-8-8V72a8%2C8%2C0%2C0%2C1%2C16%2C0v48h48A8%2C8%2C0%2C0%2C1%2C192%2C128Z%22%2F%3E%3C%2Fsvg%3E");
+  --ph2-arrows-left-right-duo:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%2523000%22%3E%3Cpath%20d%3D%22M208%2C80v96H48V80Z%22%20opacity%3D%220.2%22%2F%3E%3Cpath%20d%3D%22M213.66%2C181.66l-32%2C32a8%2C8%2C0%2C0%2C1-11.32-11.32L188.69%2C184H48a8%2C8%2C0%2C0%2C1%2C0-16H188.69l-18.35-18.34a8%2C8%2C0%2C0%2C1%2C11.32-11.32l32%2C32A8%2C8%2C0%2C0%2C1%2C213.66%2C181.66Zm-139.32-64a8%2C8%2C0%2C0%2C0%2C11.32-11.32L67.31%2C88H208a8%2C8%2C0%2C0%2C0%2C0-16H67.31L85.66%2C53.66A8%2C8%2C0%2C0%2C0%2C74.34%2C42.34l-32%2C32a8%2C8%2C0%2C0%2C0%2C0%2C11.32Z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+/* --- 1. Navigasi: sembunyikan semua SVG inline, ganti mask Phosphor --- */
+.sidebar .nav-link svg { display:none; }
+.sidebar .nav-link::before { content:""; flex:none;
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat; }
+.sidebar .nav-link[data-page="pos"]::before { width:20px; height:20px;
+  -webkit-mask-image:var(--ph2-cash-register-duo); mask-image:var(--ph2-cash-register-duo); }
+.sidebar .nav-link[data-page="products"]::before { width:19px; height:19px;
+  -webkit-mask-image:var(--ph2-package-duo); mask-image:var(--ph2-package-duo); }
+.sidebar .nav-link[data-page="shift"]::before { width:20px; height:20px;
+  -webkit-mask-image:var(--ph2-vault-duo); mask-image:var(--ph2-vault-duo); }
+.sidebar .nav-link[data-page="attendance"]::before { width:19px; height:19px;
+  -webkit-mask-image:var(--ph2-fingerprint-duo); mask-image:var(--ph2-fingerprint-duo); }
+.sidebar .nav-link[data-page="reports"]::before { width:19px; height:19px;
+  -webkit-mask-image:var(--ph2-chart-bar-duo); mask-image:var(--ph2-chart-bar-duo); }
+.sidebar .nav-link[data-page="outlets"]::before { width:19px; height:19px;
+  -webkit-mask-image:var(--ph2-buildings-duo); mask-image:var(--ph2-buildings-duo); }
+.sidebar .nav-link[data-page="users"]::before { width:19px; height:19px;
+  -webkit-mask-image:var(--ph2-shield-check-duo); mask-image:var(--ph2-shield-check-duo); }
+.sidebar .nav-link.mobile-more::before { content:""; width:19px; height:19px; flex:none;
+  -webkit-mask-image:var(--ph2-list-bold); mask-image:var(--ph2-list-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+@media (max-width:800px) {
+  /* kotak ikon mask yang sudah ada: pos/shift 22px (polish.css §0/§6) */
+  .sidebar .nav-link[data-page="pos"]::before,
+  .sidebar .nav-link[data-page="shift"]::before { width:22px; height:22px; }
+}
+.topbar .sync-pill .header-sync-icon { display:none; }
+.topbar .sync-pill::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-arrows-clockwise-bold); mask-image:var(--ph2-arrows-clockwise-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.topbar .sync-pill[data-state="error"]::before,
+.topbar .sync-pill[data-state="conflict"]::before { color:#D92D20; }
+.topbar .sync-pill[data-state="offline"]::before,
+.topbar .sync-pill[data-state="offline-pending"]::before { color:#B54708; }
+.topbar .sync-pill[data-state="syncing"]::before,
+.topbar .sync-pill.sync-loading::before { animation:account-spin .8s linear infinite; }
+.topbar .mobile-header-menu::before { content:""; width:24px; height:24px; flex:none;
+  -webkit-mask-image:var(--ph2-list-bold); mask-image:var(--ph2-list-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.topbar .mobile-header-menu svg { display:none; }
+.topbar .mobile-header-menu { place-items:center; }
+.topbar .user-menu::after { content:""; width:20px; height:20px; flex:none;
+  -webkit-mask-image:var(--ph2-caret-down); mask-image:var(--ph2-caret-down);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.topbar .user-menu .user-chevron { display:none; }
+.topbar #clock::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-clock-duo); mask-image:var(--ph2-clock-duo);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.topbar #clock { display:inline-flex; align-items:center; gap:6px; }
+.sidebar .side-note::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-hard-drives-duo); mask-image:var(--ph2-hard-drives-duo);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+  margin-top:2px;
+}
+.sidebar .side-note { display:flex; align-items:flex-start; gap:10px; }
+.search-wrap svg { display:none; }
+.search-wrap::before { content:""; position:absolute; left:14px; top:50%;
+  transform:translateY(-50%); width:18px; height:18px; pointer-events:none;
+  background:currentColor;
+  -webkit-mask-image:var(--ph2-magnifying-glass); mask-image:var(--ph2-magnifying-glass);
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat; }
+#page-pos #cameraScanButton svg { display:none; }
+#page-pos #cameraScanButton::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-scan); mask-image:var(--ph2-scan);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#page-pos #holdTransaction::before { content:""; border:0; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-pause-bold); mask-image:var(--ph2-pause-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat; }
+.category-picker-trigger svg { display:none; }
+.category-picker-trigger::after { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-caret-down-bold); mask-image:var(--ph2-caret-down-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+  transition:transform .15s ease;
+}
+.category-picker-trigger[aria-expanded="true"]::after { transform:rotate(180deg); }
+.custom-select-trigger svg { display:none; }
+.custom-select-trigger::after { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-caret-down); mask-image:var(--ph2-caret-down);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+  transition:transform .15s ease;
+}
+.custom-select-trigger[aria-expanded="true"]::after { transform:rotate(180deg); }
+.topbar .custom-select-outlet .custom-select-trigger::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-map-pin-duo); mask-image:var(--ph2-map-pin-duo);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.inventory-action-trigger svg { display:none; }
+.inventory-action-trigger::after { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-caret-down); mask-image:var(--ph2-caret-down);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#page-pos .product-view-toggle button svg { display:none; }
+#page-pos .product-view-toggle button[data-product-view="list"]::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-list-bold); mask-image:var(--ph2-list-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#page-pos .product-view-toggle button[data-product-view="grid"]::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-squares-four); mask-image:var(--ph2-squares-four);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#page-pos .favorite-toggle svg { display:none; }
+#page-pos .favorite-toggle { display:grid; place-items:center; }
+#page-pos .favorite-toggle::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-star); mask-image:var(--ph2-star);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#page-pos .favorite-toggle.active::before {
+  -webkit-mask-image:var(--ph2-star-fill); mask-image:var(--ph2-star-fill); }
+#page-pos .product-image-placeholder svg { display:none; }
+#page-pos .product-image-placeholder::before { content:""; width:22px; height:22px; flex:none;
+  -webkit-mask-image:var(--ph2-cube); mask-image:var(--ph2-cube);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.cart-empty svg { display:none; }
+.cart-empty > div::before { content:""; display:block; width:35px; height:35px;
+  margin:0 auto 9px; background:currentColor;
+  -webkit-mask-image:var(--ph2-shopping-bag); mask-image:var(--ph2-shopping-bag);
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat; }
+.qty-controls button { font-size:0; display:grid; place-items:center; }
+.qty-controls button[data-delta="-1"]::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-minus-bold); mask-image:var(--ph2-minus-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.qty-controls button[data-delta="1"]::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-plus-bold); mask-image:var(--ph2-plus-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+/* Preview keranjang mobile (live build: modal generik via openCartPreview,
+   BUKAN #mobileCartDrawer — drawer hanya ada di root index.html, belum
+   masuk build dist yang disajikan server). Tombol qty preview: .cart-preview-qty */
+.cart-preview-qty.button.small { font-size:0; display:grid; place-items:center; }
+.cart-preview-qty[data-delta="-1"]::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-minus-bold); mask-image:var(--ph2-minus-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.cart-preview-qty[data-delta="1"]::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-plus-bold); mask-image:var(--ph2-plus-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.remove-item { font-size:0; display:grid; place-items:center; }
+.remove-item::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-x-bold); mask-image:var(--ph2-x-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.split-line button { font-size:0; display:grid; place-items:center; }
+.split-line button::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-x-bold); mask-image:var(--ph2-x-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.modal-close { font-size:0; display:grid; place-items:center; }
+.modal-close::before { content:""; width:20px; height:20px; flex:none;
+  -webkit-mask-image:var(--ph2-x-bold); mask-image:var(--ph2-x-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.mobile-cart-drawer-close { font-size:0; }
+.mobile-cart-drawer-close::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-x-bold); mask-image:var(--ph2-x-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+/* --- 8. Tombol teks diberi ikon depan (display inline-flex, tinggi tetap) --- */
+#printReports, #exportSales, #exportProducts, #exportAttendance,
+#receiptSettingsButton, #addProductButton, #addUserButton, #addOutletButton,
+#attendanceIn, #attendanceOut { display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+#printReports::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-printer); mask-image:var(--ph2-printer);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#receiptSettingsButton::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-printer); mask-image:var(--ph2-printer);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#exportSales::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-download-simple); mask-image:var(--ph2-download-simple);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#exportProducts::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-download-simple); mask-image:var(--ph2-download-simple);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#exportAttendance::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-download-simple); mask-image:var(--ph2-download-simple);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#addProductButton::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-plus-bold); mask-image:var(--ph2-plus-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#addUserButton::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-plus-bold); mask-image:var(--ph2-plus-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#addOutletButton::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-plus-bold); mask-image:var(--ph2-plus-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#attendanceIn::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-sign-in-bold); mask-image:var(--ph2-sign-in-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#attendanceOut::before { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-sign-out-bold); mask-image:var(--ph2-sign-out-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#transferButton { gap:8px; }
+#transferButton::before { content:""; width:18px; height:18px; flex:none;
+  -webkit-mask-image:var(--ph2-arrows-left-right-duo); mask-image:var(--ph2-arrows-left-right-duo);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#mobileCartLink::before { content:""; width:20px; height:20px; flex:none;
+  -webkit-mask-image:var(--ph2-shopping-bag); mask-image:var(--ph2-shopping-bag);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.shift-banner .shift-copy-date svg { display:none; }
+.shift-banner .shift-copy-date { display:inline-flex; align-items:center; gap:6px; }
+.shift-banner .shift-copy-date::before { content:""; width:14px; height:14px; flex:none;
+  -webkit-mask-image:var(--ph2-calendar-blank); mask-image:var(--ph2-calendar-blank);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.shift-banner .shift-icon svg { display:none; }
+.shift-banner .shift-icon::before { content:""; width:21px; height:21px; flex:none;
+  -webkit-mask-image:var(--ph2-calendar-blank); mask-image:var(--ph2-calendar-blank);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+.custom-select-option[aria-selected="true"] { display:flex; align-items:center;
+  justify-content:space-between; gap:8px; }
+.custom-select-option[aria-selected="true"]::after { content:""; width:16px; height:16px; flex:none;
+  -webkit-mask-image:var(--ph2-check-bold); mask-image:var(--ph2-check-bold);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+#page-attendance .attendance-location a { display:inline-flex; align-items:center; gap:4px; }
+#page-attendance .attendance-location a::before { content:""; width:14px; height:14px; flex:none;
+  -webkit-mask-image:var(--ph2-map-pin-duo); mask-image:var(--ph2-map-pin-duo);
+  background:currentColor;
+  -webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;
+  mask-size:contain;mask-position:center;mask-repeat:no-repeat;
+}
+/* --- 10. Mobile: ukuran mask yang sudah ada (polish.css §0/§6) --- */
+@media (max-width:800px) {
+  .topbar .sync-pill::before { width:24px; height:24px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .topbar .sync-pill[data-state="syncing"]::before,
+  .topbar .sync-pill.sync-loading::before { animation:none; }
+  .category-picker-trigger::after, .custom-select-trigger::after { transition:none; }
+}
+

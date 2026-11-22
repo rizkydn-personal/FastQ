@@ -1,0 +1,940 @@
+/* ==========================================================================
+   polish-gemini3-kasir.css — SAMAIN PERSIS RENDER: kasir + cart + drawer.
+   --------------------------------------------------------------------------
+   Target otoritas : ~/workspace/user/files/FastQ_POS_-_Polished_UI__1__0_xch2.html
+                     + ~/workspace/fastq-audit/shots-polish2/gemini-exact/render/
+                       measurements.md + measurements.json
+   Yang diubah     : geometri kasir RENDER (baris 58px / pitch 62px / thumb
+                     40x40 / nama 12px / harga-stok 11px), search 38px +
+                     tombol clear, kategori "Kategori: Semua", toggle 74x42,
+                     Tahan 85x38, grid 158x146,5 / 236,2x146,5, floating cart
+                     366x58 bottom 4.35rem, panel keranjang desktop 373px,
+                     drawer keranjang 366x472 / 448x472, menu drawer 288px.
+   Batasan lama DICABUT: pitch 65 / thumb 46 / nama 15px / harga-stok 13px /
+                     Tahan 44-48px / search 44px (polish-gemini-kasir.css
+                     blok 6-8) — file ini menimpa angka-angka itu.
+   Data tetap DATA ASLI (DUMMY Teh botol) — file ini CSS saja, tidak
+   mengubah nama produk atau isi keranjang.
+   BELUM DI-WIRE: file ini belum ada <link> di index.html dan belum ada di
+                     posStyles scripts/copy-legacy.mjs (milik agen chrome /
+                     parent). Sampai di-wire, verifikasi via injeksi
+                     addStyleTag di browser live. File ini HARUS dimuat
+                     PALING AKHIR (setelah polish-gemini2-*.css) supaya
+                     override-nya menang.
+   Yang TIDAK disentuh: modal struk (tetap 3 tombol Share/Print/Selesai),
+                     keyboard HP (tidak ada focus() ke input teks di sini;
+                     tombol clear tidak mem-fokus input), batas diskon 10%,
+                     stok atomik, PPN (tetap hilang), offline-first (tanpa
+                     CDN/@import/url() eksternal; font Plus Jakarta Sans
+                     dari polish-gemini2-fonts.css yang sudah dimuat).
+   Token Gemini: navy #0F2544, biru #1447E6 / #1D4ED8, slate-500 #64748B,
+                     slate-400 #94A3B8, slate-300 #CBD5E1, garis
+                     rgba(226,232,240,.85), shadow "0 1px 2px
+                     rgba(15,37,68,.03), 0 4px 12px rgba(15,37,68,.02)".
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Judul halaman + tanggal + Tahan
+      Render: "Kasir" 20px/800 mobile, 24px desktop; tanggal 12px/500
+      slate-500; "Tahan" 85x38, 12px/700, radius 12.
+   -------------------------------------------------------------------------- */
+#page-pos .page-heading {
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+#page-pos .page-heading h1 {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  color: #0F2544;
+}
+#page-pos .page-heading p,
+#page-pos #posDate {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748B;
+}
+#page-pos .page-heading .heading-actions #holdTransaction {
+  width: 85px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  color: #0F2544;
+}
+@media (min-width: 801px) {
+  #page-pos .page-heading {
+    margin-top: 3px;
+  }
+  #page-pos .page-heading h1 {
+    font-size: 24px;
+    line-height: 1.33;
+  }
+}
+/* polish-gemini-kasir.css memaksa Tahan 48px !important di coarse — kalahkan. */
+@media (max-width: 800px) and (pointer: coarse) {
+  #page-pos .page-heading .heading-actions #holdTransaction {
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Kartu katalog — radius 16, border + shadow token Gemini.
+      Render: padding 14 (mobile) / 16 (desktop); gap antar section 12px.
+      Padding ada DI KARTU (seperti render), bukan di tiap section — jadi
+      toolbar/kategori/grid tidak lagi membawa inset samping sendiri;
+      grid memakai padding-right 4px (pr-1 render, gutter scrollbar) dan
+      padding-left 0, sehingga baris tepat 324px (mobile) / 724,7px
+      (desktop) mulai x31/x281 seperti render.
+   -------------------------------------------------------------------------- */
+#page-pos .catalog {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+  padding: 14px;
+}
+#page-pos .catalog-toolbar {
+  padding: 0;
+  border-bottom: 0;
+  display: flex;
+  gap: 8px;
+}
+#page-pos .category-row {
+  padding: 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Padding grid 4px kanan (pr-1) / 0 kiri: baris render 324px (mobile) /
+   724,7px (desktop). Selektor dinaikkan ke (1,3,0) lewat .catalog supaya
+   menang atas polish.css "#page-pos .product-grid[data-view=list]
+   { padding: 4px 8px 16px; }" (1,2,0) tanpa tergantung urutan file. */
+#page-pos .catalog .product-grid[data-view="list"] {
+  padding: 12px 4px 0 0;
+  margin-top: 0;
+}
+@media (min-width: 801px) {
+  #page-pos .pos-layout {
+    grid-template-columns: minmax(0, 1fr) 373px;
+    gap: 16px;
+  }
+  #page-pos .catalog {
+    /* Layout live 735px (100vh-165), bukan 746 render: min-height katalog
+       disamakan ke baris grid supaya bawah katalog & panel sejajar. */
+    min-height: calc(100vh - 165px);
+    padding: 16px;
+  }
+  #page-pos .catalog-toolbar {
+    padding: 0;
+  }
+  #page-pos .category-row {
+    padding: 12px 0 0;
+  }
+  #page-pos .catalog .product-grid[data-view="list"] {
+    padding: 12px 4px 0 0;
+  }
+}
+
+/* Search: tinggi 38, radius 12, font 12 (mobile) / 13 (desktop),
+   bg rgba(248,250,252,.6), padding "10px 36px 10px 40px" (render). */
+#page-pos .search-wrap {
+  position: relative;
+}
+#page-pos .search-wrap svg {
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #64748B;
+}
+#page-pos .catalog .search-wrap input {
+  height: 38px;
+  min-height: 38px;
+  font-size: 12px;
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  background: rgba(248, 250, 252, 0.6);
+  padding: 10px 36px 10px 40px;
+}
+#page-pos .search-wrap input::placeholder {
+  color: #64748B;
+}
+@media (min-width: 801px) {
+  #page-pos .catalog .search-wrap input {
+    font-size: 13px;
+  }
+}
+/* Tombol clear "Bersihkan pencarian" (render #kasirSearchClearBtn):
+   dibuat JS di 03-cashier-cart.js; sembunyi saat input kosong. */
+#page-pos .search-wrap .kasir-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #94A3B8;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+#page-pos .search-wrap .kasir-search-clear:hover {
+  background: #F1F5F9;
+  color: #475569;
+}
+#page-pos .search-wrap .kasir-search-clear[hidden] {
+  display: none !important;
+}
+/* Tombol scan: 40x40, radius 12. */
+#page-pos #cameraScanButton {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 12px;
+}
+#page-pos #cameraScanButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Kategori: teks "Kategori: Semua", 12px/600 (13px desktop), tinggi 38,
+   radius 12. (Teks diubah JS di renderProducts: span "Kategori:".) */
+#page-pos .category-picker {
+  flex: 1 1 0;
+  min-width: 0;
+}
+#page-pos .category-picker-trigger {
+  height: 38px;
+  min-height: 38px;
+  gap: 4px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0F2544;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+}
+#page-pos .category-picker-trigger > span {
+  color: #0F2544;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+#page-pos .category-picker-trigger > strong {
+  color: #0F2544;
+  font-size: 12px;
+  font-weight: 600;
+}
+#page-pos .category-picker-trigger svg {
+  width: 18px;
+  height: 18px;
+  color: #64748B;
+}
+#page-pos .category-picker-option {
+  font-size: 12px;
+}
+@media (min-width: 801px) {
+  #page-pos .category-picker-trigger,
+  #page-pos .category-picker-trigger > span,
+  #page-pos .category-picker-trigger > strong {
+    font-size: 13px;
+  }
+}
+/* Toggle list/grid: wadah 74x42, tombol 32x32, radius 12,
+   title "Tampilan List" / "Tampilan Grid" (diubah JS di renderProducts). */
+#page-pos .product-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 42px;
+  min-height: 42px;
+  padding: 4px 3px;
+  border-radius: 12px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+#page-pos .product-view-toggle button {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   3. Daftar produk (list view) — RENDER, bukan geometri lama.
+      Baris 58px, pitch 62px (gap 4px), radius 12, padding 8px 12px.
+      Thumb 40x40 radius 12 (bg putih, border slate-200/80, ikon cube
+      slate-400). Nama 12px/600 #0F2544 (13px desktop), harga 11px/700
+      #1447E6, stok 11px/400 slate-500, pemisah "|" slate-300.
+      Bintang favorit 16px. Baris in-cart: bg rgba(239,246,255,.6) +
+      border rgba(191,219,254,.9); baris biasa: bg slate-50/70 +
+      border slate-200/70.
+   -------------------------------------------------------------------------- */
+#page-pos .product-grid[data-view="list"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+/* Selektor dinaikkan ke (1,4,0) lewat .product-card-wrap supaya menang atas
+   polish.css:1465 "#page-pos .product-grid[data-view=list] .product-card
+   { border:0; ... }" (1,3,0) tanpa tergantung urutan file. */
+#page-pos .product-grid[data-view="list"] .product-card-wrap .product-card {
+  height: 58px;
+  min-height: 58px;
+  padding: 8px 12px;
+  gap: 12px;
+  background: rgba(248, 250, 252, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  border-radius: 12px;
+}
+#page-pos .product-grid[data-view="list"] .product-card-wrap .product-card:hover {
+  background: rgba(241, 245, 249, 0.9);
+}
+#page-pos .product-grid[data-view="list"] .product-card-wrap .product-card.in-cart {
+  background: rgba(239, 246, 255, 0.6);
+  border-color: rgba(191, 219, 254, 0.9);
+}
+/* Border-top antar baris (spesifisitas lama lebih tinggi) disamakan warnanya. */
+#page-pos .product-grid[data-view="list"] .product-card-wrap:not(:first-child) .product-card {
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+}
+#page-pos .product-grid[data-view="list"] .product-card-wrap:not(:first-child) .product-card.in-cart {
+  border-top-color: rgba(191, 219, 254, 0.9);
+}
+#page-pos .product-grid[data-view="list"] .product-card-content {
+  gap: 2px;
+  padding-right: 34px;
+}
+#page-pos .product-grid[data-view="list"] .product-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.33;
+  color: #0F2544;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-pos .product-name .hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748B;
+}
+#page-pos .product-grid[data-view="list"] .product-meta {
+  justify-content: flex-start;
+  gap: 6px;
+  flex-wrap: nowrap;
+  line-height: 1.5;
+}
+#page-pos .product-grid[data-view="list"] .product-price {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1447E6;
+}
+#page-pos .product-grid[data-view="list"] .product-sep {
+  font-size: 11px;
+  font-weight: 400;
+  color: #CBD5E1;
+}
+#page-pos .product-grid[data-view="list"] .product-stock {
+  font-size: 11px;
+  font-weight: 400;
+  color: #64748B;
+}
+@media (min-width: 801px) {
+  #page-pos .product-grid[data-view="list"] .product-name {
+    font-size: 13px;
+  }
+}
+/* Thumb + badge qty + bintang (semua view). */
+#page-pos .product-image-frame {
+  position: relative;
+}
+#page-pos .product-grid[data-view="list"] .product-image-frame {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+#page-pos .product-image-placeholder svg {
+  width: 20px;
+  height: 20px;
+  color: #94A3B8;
+}
+/* Badge qty: 11px/800 biru di pojok kiri atas thumb (-6px). */
+#page-pos .product-qty-badge {
+  top: -6px;
+  left: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  color: #1447E6;
+  font-size: 11px;
+  font-weight: 800;
+}
+#page-pos .favorite-toggle {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+}
+#page-pos .favorite-toggle::before {
+  width: 16px;
+  height: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   4. Grid view — kartu 158x146,5 mobile (2 kolom, gap 8) /
+      236,2x146,5 desktop (3 kolom); thumb h-20 radius 12 bg putih;
+      nama 12px/600, harga 12px/700 biru, stok 11px slate-500.
+      Radius kartu grid render = 12 (bukan 16).
+   -------------------------------------------------------------------------- */
+#page-pos .catalog .product-grid[data-view="grid"] {
+  padding: 12px 4px 0 0;
+}
+#page-pos .product-grid[data-view="grid"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (min-width: 801px) {
+  #page-pos .product-grid[data-view="grid"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #page-pos .catalog .product-grid[data-view="grid"] {
+    padding: 12px 4px 0 0;
+  }
+}
+#page-pos .product-grid[data-view="grid"] .product-card {
+  height: 146.5px;
+  min-height: 0;
+  aspect-ratio: auto;
+  padding: 10px 10px 8px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border-color: rgba(226, 232, 240, 0.85);
+}
+#page-pos .product-grid[data-view="grid"] .product-card.in-cart {
+  background: rgba(239, 246, 255, 0.6);
+  border-color: rgba(191, 219, 254, 0.9);
+}
+#page-pos .product-grid[data-view="grid"] .product-image-frame {
+  width: 100%;
+  max-width: none;
+  height: 80px;
+  flex-basis: auto;
+  aspect-ratio: auto;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+#page-pos .product-grid[data-view="grid"] .product-image-placeholder svg {
+  width: 24px;
+  height: 24px;
+  color: #94A3B8;
+}
+#page-pos .product-grid[data-view="grid"] .product-card-content {
+  gap: 8px;
+  padding-right: 0;
+}
+#page-pos .product-grid[data-view="grid"] .product-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.33;
+  color: #0F2544;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-pos .product-grid[data-view="grid"] .product-meta {
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+/* Render grid: meta "Rp X" kiri + "Stok N" kanan, TANPA pemisah "|" dan
+   TANPA satuan ("pcs") — beda dengan list yang memakai "| Stok N pcs".
+   Satuan dibungkus <span class="product-unit"> di 03-cashier-cart.js
+   supaya bisa disembunyikan per view tanpa re-render saat toggle. */
+#page-pos .product-grid[data-view="grid"] .product-sep,
+#page-pos .product-grid[data-view="grid"] .product-unit {
+  display: none;
+}
+#page-pos .product-grid[data-view="grid"] .product-price {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1447E6;
+}
+/* Grid render tidak memakai pemisah "|" (harga kiri, stok kanan). */
+#page-pos .product-grid[data-view="grid"] .product-sep {
+  display: none;
+}
+#page-pos .product-grid[data-view="grid"] .product-stock {
+  font-size: 11px;
+  font-weight: 400;
+  color: #64748B;
+}
+#page-pos .product-grid[data-view="grid"] .favorite-toggle {
+  top: 10px;
+  right: 10px;
+  left: auto;
+  transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. Panel keranjang desktop — 373px lebar, radius 16, padding 16.
+      Header "Keranjang" 15px/800 + ringkasan 12px slate-500; "Diskon" &
+      "Kosongkan" 12px/600 padding 6px 10px radius 8; baris item 78px
+      (nama 12px/700 + total 12px/700; stepper 28x28 radius 8;
+      "Diskon" 12px/600); Subtotal 12px slate-500, "Total" 13px/700,
+      nilai total 20px/800 Plus Jakarta Sans; "Bayar Rp X" 44px
+      gradient #1447E6->#1D4ED8, 14px/700, radius 12.
+   -------------------------------------------------------------------------- */
+#page-pos .cart-panel {
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03), 0 4px 12px rgba(15, 37, 68, 0.02);
+}
+@media (min-width: 801px) {
+  #page-pos .cart-panel {
+    align-self: stretch;
+  }
+}
+#page-pos .cart-head {
+  padding: 16px 16px 12px;
+}
+#page-pos .cart-head h2 {
+  font-size: 15px;
+  font-weight: 800;
+}
+#page-pos .cart-count {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748B;
+}
+#page-pos .cart-actions .button {
+  height: 28px;
+  min-height: 28px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+#page-pos .cart-lines {
+  padding: 0 16px;
+}
+#page-pos .cart-item {
+  padding: 12px 0;
+  border-color: rgba(226, 232, 240, 0.85);
+}
+#page-pos .cart-item-head {
+  gap: 8px;
+}
+#page-pos .cart-item-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0F2544;
+}
+#page-pos .cart-item-price {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0F2544;
+}
+#page-pos .cart-sub {
+  margin-top: 8px;
+  gap: 6px;
+}
+#page-pos .cart-item .qty-controls {
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+}
+#page-pos .cart-item .qty-controls button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+#page-pos .cart-item .qty-controls button::before {
+  width: 14px;
+  height: 14px;
+}
+#page-pos .cart-item .qty-controls input {
+  width: 32px;
+  height: 28px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0F2544;
+}
+#page-pos .cart-item .mini-action {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+/* Hapus ×: glyph × SUDAH ada dari mask ::before polish-gemini2-icons.css
+   (font-size:0). Aturan lama font-size:18px menghidupkan kembali teks "×"
+   di bawah mask sehingga tombol 48px dan baris 97px. Paksa 28px + font 0. */
+#page-pos .cart-item .remove-item {
+  font-size: 0;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+#page-pos .cart-item .remove-item::before {
+  width: 16px;
+  height: 16px;
+}
+#page-pos .cart-summary {
+  padding: 12px 16px 16px;
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
+}
+#page-pos .cart-summary .summary-row {
+  font-size: 12px;
+  margin: 4px 0;
+}
+#page-pos .cart-summary .summary-row span {
+  color: #64748B;
+}
+#page-pos .cart-summary .summary-row strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0F2544;
+}
+#page-pos .cart-summary .summary-total {
+  padding: 10px 0 12px;
+}
+#page-pos .cart-summary .summary-total span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0F2544;
+}
+#page-pos .cart-summary .summary-total strong {
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0F2544;
+}
+#page-pos #payButton {
+  height: 44px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   6. Floating cart mobile — 366x58, radius 16, putih/95 blur,
+      border slate-200/90, padding 10, bottom 4.35rem (tepat di atas
+      bottom nav); isi "N item • N produk", "Rp X", tombol "Rincian" +
+      "Bayar" gradient. Sembunyi saat keranjang kosong (diatur renderCart).
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) {
+  .mobile-checkout:not([hidden]) {
+    display: flex;
+    align-items: center;
+    left: 12px;
+    right: 12px;
+    bottom: calc(69.6px + env(safe-area-inset-bottom));
+    padding: 10px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(15, 37, 68, 0.16);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  /* Anak 36px (bukan 38): total pill = 36 + padding 10x2 + border 2 = 58. */
+  .mobile-cart-link {
+    height: 36px;
+    min-height: 36px;
+    padding: 6px 10px;
+    gap: 6px;
+    font-size: 12px;
+    border-radius: 12px;
+  }
+  /* Render tidak punya ikon di pill keranjang — ikonnya ::before mask
+     (bukan <svg>), memakan ~26px sehingga "3 item • 3 produk" terpotong
+     jadi "3 prod...". Sembunyikan ::before-nya. */
+  #mobileCheckout .mobile-cart-link::before {
+    display: none;
+  }
+  .mobile-cart-link svg {
+    display: none;
+  }
+  .mobile-cart-link #mobileItemCount {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .mobile-cart-link #mobileCartTotal {
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .mobile-cart-link .mobile-cart-rincian {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .mobile-pay-button {
+    height: 36px;
+    min-height: 36px;
+    min-width: 76px;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. Drawer keranjang — panel mobile 366x472 radius 16 padding 16
+      (bottom sheet, padding luar 12) / desktop 448x472 modal tengah;
+      judul "Preview keranjang" 16px/800, tutup 32x32; "Diskon" outline +
+      "Kosongkan" merah (red-600 di red-50/50); baris item 76px
+      (nama 12px/700 + total 12px/700; stepper 32x32 radius 8 +
+      qty 12px/700 + "Diskon" 12px/600); footer Subtotal 12px,
+      Total nilai 14px/800 Plus Jakarta Sans.
+      PENYIMPANGAN SENGAJA vs render: kaki drawer live tetap berisi
+      "Tutup" + "Bayar" (render hanya "Tutup" full-width) — tombol Bayar
+      drawer dipertahankan karena alur end-to-end yang dijaga tugas ini
+      adalah drawer -> Bayar -> struk. "Tutup" di sini BUKAN full-width.
+   -------------------------------------------------------------------------- */
+#mobileCartDrawer {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-height: 472px;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 -8px 32px rgba(15, 37, 68, 0.2);
+}
+@media (min-width: 801px) {
+  #mobileCartDrawer {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    width: 448px;
+    max-width: calc(100vw - 32px);
+    transform: translate(-50%, -50%);
+  }
+}
+/* Render tidak punya grip bar di atas drawer. */
+.mobile-cart-drawer-grip {
+  display: none;
+}
+.mobile-cart-drawer-head {
+  padding-bottom: 8px;
+}
+.mobile-cart-drawer-head h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+.mobile-cart-drawer-actions {
+  padding: 8px 0;
+}
+.mobile-cart-drawer-actions .button {
+  min-height: 40px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+#mobileCartDrawerDiscount {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  color: #0F2544;
+}
+#mobileCartDrawerClear {
+  background: rgba(254, 242, 242, 0.5);
+  border-color: #FECACA;
+  color: #DC2626;
+}
+/* Baris 76px render: padding 10 + head ~15 + margin 8 + aksi 32 + border 1.
+   Padding 10px 0 (bukan 9px) + wrapper qty 32px (polish.css:1297 memaksa
+   .qty-controls 44px) supaya 3 baris muat tanpa scroll di panel 472px. */
+.mobile-cart-drawer-line {
+  padding: 10px 0;
+}
+.mobile-cart-drawer-name {
+  font-size: 12px;
+  font-weight: 700;
+}
+.mobile-cart-drawer-line-total {
+  font-size: 12px;
+  font-weight: 700;
+}
+.mobile-cart-drawer-line-actions {
+  margin-top: 8px;
+}
+.mobile-cart-drawer-line-actions .qty-controls {
+  height: 32px;
+  min-height: 32px;
+}
+.mobile-cart-drawer-line-actions .qty-controls button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+}
+.mobile-cart-drawer-line-actions .qty-controls button::before {
+  width: 16px;
+  height: 16px;
+}
+.mobile-cart-drawer-qty {
+  min-width: 28px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.mobile-cart-drawer-line-actions .mini-action {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.mobile-cart-drawer-summary {
+  padding-top: 8px;
+}
+.mobile-cart-drawer-summary .summary-row {
+  font-size: 12px;
+  margin: 2px 0;
+}
+.mobile-cart-drawer-summary .summary-row strong {
+  font-size: 12px;
+}
+.mobile-cart-drawer-summary .summary-total {
+  font-size: 14px;
+  margin-top: 0;
+  border-top: 0;
+  padding: 6px 0 2px;
+}
+.mobile-cart-drawer-summary .summary-total strong {
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+}
+.mobile-cart-drawer-foot {
+  padding-top: 8px;
+}
+.mobile-cart-drawer-foot .button {
+  min-height: 44px;
+  font-size: 14px;
+  border-radius: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   8. Menu drawer — panel 288 lebar x full height, padding 16; avatar
+      "AD" 36x36 radius 12 bg blue-50 teks 12px/800 biru; nama 12px/700,
+      sub 11px slate-400; item menu 256x48, 12px/600, radius 12, ikon
+      duotone 18px biru (ikon di-klon JS dari sidebar di openMenuDrawer);
+      label section 10px/700 uppercase tracking 0,09em slate-400;
+      footer full-width 12px/600 radius 12; overlay slate-900/40 + blur 2px.
+      Isi difilter per role OLEH KODE YANG SUDAH ADA (openMenuDrawer hanya
+      menyalin .sidebar .nav-link yang tidak hidden; renderRole() di
+      06-shift-roles.js menyembunyikan halaman di luar ROLE_PAGES) —
+      terverifikasi live: Kasir hanya melihat Kasir, Shift & kas, Absen,
+      Laporan. Footer render "Ganti Outlet Aktif" (buka modal pilih outlet,
+      JS di 03-cashier-cart.js); ganti akun tetap bisa lewat ketuk area
+      akun di header drawer (satu-satunya jalur rolePicker di HP, karena
+      .topbar .user-menu disembunyikan di mobile).
+   -------------------------------------------------------------------------- */
+#menuDrawerModal {
+  width: min(288px, 85vw);
+  padding: 16px;
+}
+.menu-drawer-account {
+  cursor: pointer;
+}
+.menu-drawer-account .avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #EFF6FF;
+  border: 1px solid #DBEAFE;
+  color: #1447E6;
+  font-size: 12px;
+  font-weight: 800;
+}
+.menu-drawer-account-text strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+.menu-drawer-account-text span {
+  font-size: 11px;
+  color: #94A3B8;
+}
+.menu-drawer-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #94A3B8;
+}
+.menu-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  min-height: 48px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+.menu-drawer-item svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: #1447E6;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.menu-drawer-item.active {
+  background: #EFF6FF;
+  color: #1447E6;
+}
+.menu-drawer-foot .button {
+  width: 100%;
+  min-height: 44px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+}

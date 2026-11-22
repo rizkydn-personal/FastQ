@@ -1,0 +1,197 @@
+/* ==========================================================================
+   FastQ polish-produk.css — perapian halaman Produk & stok (#page-products)
+   dan Outlet & transfer stok (#page-outlets).
+   Dimuat SETELAH polish.css dan polish-extra.css, jadi aturan di sini menang
+   atas keduanya. Hanya menyentuh kedua halaman itu; halaman lain tidak
+   disentuh.
+   Arah desain (mengikat, 2026-11-22): ringkas, nyaman, bersih, enak dilihat,
+   responsive. Palet terkendali: biru primer #1D4ED8 + navy #0B2E6B + netral;
+   hijau #16A34A hanya untuk status live; merah hanya untuk stok habis.
+   Tanpa warna baru, tanpa border/divider dotted, tanpa ornamen ceklis,
+   tanpa badge/pill redundan, tanpa dekorasi tempelan.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Heading halaman Produk: tombol "Tambah produk" full-width di mobile.
+   .heading-actions sudah grid 2 kolom di <=800px (polish.css); tombol
+   Tambah (anak ke-3) membentang ke dua kolom. Di desktop tetap auto.
+   -------------------------------------------------------------------------- */
+@media (max-width: 800px) {
+  #page-products .heading-actions #addProductButton {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Toolbar produk: search 44px di desktop (di mobile sudah 44px),
+   filter stok + tombol impor radius 12px.
+   -------------------------------------------------------------------------- */
+#page-products #inventorySearch {
+  height: 44px;
+}
+#page-products #stockFilter {
+  height: 44px;
+  border-radius: 12px;
+}
+#page-products #importProducts {
+  border-radius: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   3. Panel + kartu produk mobile: kartu radius 16px, border #E2E8F0.
+   Kolom kedua grid jadi auto (selebar tombol Aksi) supaya nama produk
+   dapat ruang lebih lebar; nama 1 baris (ellipsis), 15px bold navy.
+   -------------------------------------------------------------------------- */
+#page-products .inventory-panel {
+  border-radius: 16px;
+  border-color: #e2e8f0;
+}
+@media (max-width: 1100px) {
+  #page-products .inventory-mobile-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+  }
+  #page-products .inventory-mobile-product strong {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0b2e6b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Trigger + menu "Aksi" kartu mobile: tombol selebar isi (83px),
+   44px, radius 12px, teks navy 600; menu radius 12px, item menu 44px.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+  #page-products .inventory-action-trigger {
+    width: auto;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid #d9e0ec;
+    border-radius: 12px;
+    color: #0b2e6b;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  #page-products .inventory-action-menu {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 6px;
+  }
+  #page-products .inventory-action-menu button {
+    min-height: 44px;
+    border-radius: 8px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Ringkasan kartu mobile: harga jadi biru primer bold.
+   (Stok tetap netral; stok menipis tetap merah lewat .inventory-stock-low.)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+  #page-products .inventory-mobile-summary span:last-child strong {
+    color: #1d4ed8;
+    font-weight: 700;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Tabel produk desktop: nama 15px bold navy, kolom Harga jual biru
+   primer 600, tombol kecil (Stok/Ubah) radius 10px.
+   -------------------------------------------------------------------------- */
+#page-products .inventory-table-wrap td:first-child strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0b2e6b;
+}
+#page-products .inventory-table-wrap td:nth-child(4) {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+#page-products .inventory-table-wrap .button.small {
+  border-radius: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   7. Panel Outlet: radius 16px, border #E2E8F0. Panel "Daftar outlet"
+   menempel ke isi (align-items:start) supaya tidak ikut membesar
+   mengikuti tinggi panel Transfer di desktop.
+   -------------------------------------------------------------------------- */
+#page-outlets .panel {
+  border-radius: 16px;
+  border-color: #e2e8f0;
+}
+#page-outlets .section-split {
+  align-items: start;
+}
+
+/* --------------------------------------------------------------------------
+   8. Form transfer: semua field 44px radius 12px; tombol
+   "Catat transfer" full-width di mobile (di desktop tetap auto).
+   -------------------------------------------------------------------------- */
+#page-outlets .form-grid select,
+#page-outlets .form-grid input {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+}
+/* Desktop: ritme 8px — gap grid form 13px -> 16px (kolom jadi 343px). */
+@media (min-width: 801px) {
+  #page-outlets .form-grid {
+    gap: 16px;
+  }
+}
+@media (max-width: 800px) {
+  #page-outlets #transferButton {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Daftar outlet: nama 15px 600 navy; status ("Aktif") teks netral
+   600 TANPA pill — hanya dot hijau 8px di depan teks. Baris outlet
+   yang tidak aktif (strong kosong) tidak mendapat dot.
+   -------------------------------------------------------------------------- */
+#page-outlets #outletList .detail-row {
+  border-bottom: none;
+}
+#page-outlets #outletList .detail-row span {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0b2e6b;
+}
+#page-outlets #outletList .detail-row strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #34415a;
+  background: none;
+}
+#page-outlets #outletList .detail-row strong:not(:empty)::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+/* --------------------------------------------------------------------------
+   10. Cincin fokus: 2px solid #1D4ED8 di semua kontrol kedua halaman.
+   (!important karena polish.css memaksa outline 3px / inset shadow
+   lewat !important di beberapa aturan :focus-visible.)
+   -------------------------------------------------------------------------- */
+#page-products :focus-visible,
+#page-outlets :focus-visible {
+  outline: 2px solid #1d4ed8 !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}

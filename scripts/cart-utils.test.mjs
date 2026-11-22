@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateCartTotals } from '../cart-utils.mjs';
 
-test('cart totals include subtotal and rounded service charge without changing tax behavior', () => {
+test('cart totals include subtotal and rounded service charge with zero tax', () => {
   const result = calculateCartTotals([
     { price: 1999, qty: 3 },
     { price: 500, qty: 2 },

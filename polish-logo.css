@@ -1,0 +1,34 @@
+/* polish-logo.css — Logo bawaan project di header (FastQ).
+   Dibuat ulang 2026-11-22 05:40 WIB setelah insiden 05:23 WIB (file hilang).
+   Perintah Rizky: logo di samping teks "FastQ" tetap pakai logo bawaan
+   project. fastq-cart.png adalah glyph keranjang PUTIH hasil crop dari
+   fastq-mark.png (keranjang + 3 garis kecepatan + 2 roda; teks "FastQ"
+   + swoosh dibuang; alpha dipertahankan; RGB diwarnai ulang putih).
+   File ini HANYA menimpa logo; jangan pindahkan aturan lain ke sini.
+   Dimuat SETELAH polish.css (+ polish-kasir.css) agar menang.
+   Verifikasi: background-size "78% auto" terukur di results.json ronde
+   sebelumnya (kotak 32px @390, 36px @1440). Radius 7px ikut hasil ukur
+   kasir (polish-kasir.css: kotak 32px, radius 9px -> 7px). */
+
+/* Glyph asli sebagai background tile biru; img wordmark tetap hidden. */
+.topbar .brand-mark {
+  background-color: #1D4ED8;
+  background-image: url("./fastq-cart.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 78% auto;
+  border-radius: 7px;
+}
+
+.topbar .brand-mark img {
+  display: none !important;
+}
+
+/* Matikan ikon keranjang Feather palsu (mask ::before polish.css:1390). */
+.topbar .brand-mark::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}

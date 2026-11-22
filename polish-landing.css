@@ -1,0 +1,87 @@
+/* ==========================================================================
+   polish-landing.css — FastQ landing + login polish
+   Recovery 2026-11-22: file hilang saat insiden 05:23 WIB, dibuat ulang
+   dari nol setara laporan verifikasi agen sebelumnya (verify_results.json).
+   Scope: halaman shell logged-out — landing (/) + login (/owner).
+   Semua override memakai spesifisitas lebih tinggi dari aturan dasar
+   (prefix .marketing-page / .dashboard-page) agar menang apa pun urutan
+   <link> saat wiring nanti.
+   Palet: biru primer #1D4ED8 + netral slate; latar #F1F5F9.
+   Ritme 8px; target sentuh >= 44px; tanpa horizontal scroll.
+   ========================================================================== */
+
+/* --- Latar #F1F5F9 ---------------------------------------------------------- */
+body:has(.marketing-page),
+body:has(.dash-login) { background: #F1F5F9; }
+.marketing-page { background: #F1F5F9; }
+.dashboard-page:has(.dash-login) { background: #F1F5F9; }
+
+/* --- Brand: teks "FastQ" duplikat di samping wordmark disembunyikan visual
+   (clip 1px, tetap terbaca screen-reader); yang tampil hanya gambar
+   wordmark bawaan project. -------------------------------------------------- */
+.marketing-page .marketing-brand { position: relative; }
+.marketing-page .marketing-brand strong {
+  position: absolute; left: 0; top: 50%;
+  width: 1px; height: 1px; margin: 0 -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0, 0, 0, 0); clip-path: inset(50%);
+  white-space: nowrap;
+}
+.marketing-page .marketing-brand img { width: auto; height: 40px; }
+
+/* --- Kartu fitur: radius 20px, border slate-200 ---------------------------- */
+.marketing-page .marketing-features article { border-radius: 20px; border-color: #E2E8F0; }
+
+/* --- Nomor fitur "01/02/03": teks polos 13px bold #1D4ED8, tanpa pill ------- */
+.marketing-page .marketing-features article > span {
+  display: block; width: auto; height: auto; padding: 0;
+  background: transparent; border-radius: 0;
+  font-size: 13px; font-weight: 800; color: var(--blue-600);
+}
+
+/* --- Tombol landing + login: radius 12px ------------------------------------ */
+.marketing-page .marketing-login,
+.marketing-page .marketing-actions .primary-action,
+.marketing-page .marketing-actions .secondary-action,
+.dashboard-page .dash-login .primary-action { border-radius: 12px; }
+
+/* --- Kartu login: lebar 440px, radius 20px ---------------------------------- */
+.dashboard-page .dash-login {
+  width: min(440px, calc(100% - 32px));
+  padding: 32px 28px;
+  border-radius: 20px; border-color: #E2E8F0;
+}
+
+/* --- Input login: 16px (anti iOS auto-zoom), radius 12px -------------------- */
+.dashboard-page .dash-login input,
+.dashboard-page .dash-login select { font-size: 16px; border-radius: 12px; }
+
+/* --- Mobile ----------------------------------------------------------------- */
+@media (max-width: 760px) {
+  .marketing-page .marketing-features article { padding: 20px; }
+  .dashboard-page .dash-login { padding: 24px 20px; }
+  .dashboard-page .dash-login form { gap: 14px; }
+  .dashboard-page .dash-login input,
+  .dashboard-page .dash-login select { min-height: 52px; }
+  .dashboard-page .dash-login .primary-action { min-height: 52px; }
+}
+@media (max-width: 480px) {
+  /* pangkas 4px celah hero -> fitur di HP */
+  .marketing-page .marketing-features { padding-top: 4px; }
+}
+
+/* --- Desktop ---------------------------------------------------------------- */
+@media (min-width: 761px) {
+  .marketing-page .marketing-brand img { height: 46px; }
+  /* hero dilebarkan: kolom copy 1.15fr agar H1 56px muat tepat 2 baris */
+  .marketing-page .marketing-hero {
+    grid-template-columns: 1.15fr .85fr;
+    gap: 40px;
+    min-height: 0;
+    padding: 56px 24px 36px;
+  }
+  .marketing-page .marketing-copy { max-width: 660px; }
+  /* H1 dibatasi 56px (dari 62px) */
+  .marketing-page .marketing-copy h1 { font-size: clamp(36px, 5vw, 56px); }
+  .marketing-page .marketing-copy > p { max-width: 640px; }
+  .marketing-page .marketing-visual img { width: min(100%, 320px); }
+}

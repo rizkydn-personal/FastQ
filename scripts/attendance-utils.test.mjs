@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attendanceDateKey, attendanceDateLabel, attendanceLocationMarkup, attendanceLocationText, attendanceTimeLabel } from '../attendance-utils.mjs';
+import {
+  attendanceDateKey,
+  attendanceDateLabel,
+  attendanceLocationMarkup,
+  attendanceLocationText,
+  attendanceTimeLabel,
+} from './test-support/attendance-utils.mjs';
 
 test('attendance date and time helpers handle valid and invalid input', () => {
   assert.equal(attendanceDateKey('2026-11-16T10:30:00.000Z'), '2026-11-16');

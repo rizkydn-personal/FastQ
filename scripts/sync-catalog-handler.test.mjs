@@ -1,21 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyCatalogEvent } from '../sync-catalog-handler.mjs';
+import { applyCatalogEvent } from '../server/sync-catalog-handler.mjs';
 
 const outletId = '00000000-0000-4000-8000-000000000001';
 const customerId = '00000000-0000-4000-8000-000000000002';
 const eventId = '00000000-0000-4000-8000-000000000003';
-const isUuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+const isUuid = (value) =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 function queryRecorder(rowCount = 1) {
   const calls = [];
-  return { calls, client: { query: async (sql, values) => { calls.push({ sql, values }); return { rowCount, rows: [] }; } } };
+  return {
+    calls,
+    client: {
+      query: async (sql, values) => {
+        calls.push({ sql, values });
+        return { rowCount, rows: [] };
+      },
+    },
+  };
 }
 
 test('catalog outlet upsert stays in the catalog handler', async () => {
   const { calls, client } = queryRecorder();
   await applyCatalogEvent({
-    client, scope: outletId, deviceId: eventId, isUuid,
+    client,
+    scope: outletId,
+    deviceId: eventId,
+    isUuid,
     event: { type: 'outlet.upsert', payload: { id: outletId, name: 'Toko audit' } },
   });
   assert.equal(calls.length, 1);
@@ -33,7 +46,7 @@ test('catalog handlers reject malformed product, deletion, and customer payloads
     const { calls, client } = queryRecorder();
     await assert.rejects(
       applyCatalogEvent({ client, scope: outletId, deviceId: eventId, isUuid, event }),
-      error => error.status === event.expected,
+      (error) => error.status === event.expected,
     );
     assert.equal(calls.length, 0);
   }
@@ -42,7 +55,10 @@ test('catalog handlers reject malformed product, deletion, and customer payloads
 test('customer upsert stores a canonical outlet-scoped payload', async () => {
   const { calls, client } = queryRecorder();
   await applyCatalogEvent({
-    client, scope: outletId, deviceId: eventId, isUuid,
+    client,
+    scope: outletId,
+    deviceId: eventId,
+    isUuid,
     event: {
       id: eventId,
       type: 'customer.upsert',
@@ -51,5 +67,9 @@ test('customer upsert stores a canonical outlet-scoped payload', async () => {
   });
   assert.equal(calls.length, 2);
   assert.deepEqual(calls[0].values, [customerId, outletId, 'Ayu', '0812', 'ayu@example.test']);
-  assert.deepEqual(calls[1].values, [{ id: customerId, name: 'Ayu', phone: '0812', email: 'ayu@example.test', outletId }, eventId, eventId]);
+  assert.deepEqual(calls[1].values, [
+    { id: customerId, name: 'Ayu', phone: '0812', email: 'ayu@example.test', outletId },
+    eventId,
+    eventId,
+  ]);
 });

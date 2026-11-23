@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { timestampMs } from '../timestamp-utils.mjs';
+import { timestampMs } from '../server/timestamp-utils.mjs';
 
 test('timestampMs preserves milliseconds from PostgreSQL Date objects', () => {
   const timestamp = '2026-11-16T04:10:04.750Z';

@@ -1,0 +1,190 @@
+/* Local Inter and Plus Jakarta Sans font declarations for the app. */
+
+/* --- 1. @font-face: Inter 400/500/600/700 ------------------------------- */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(../assets/fonts/inter.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(../assets/fonts/inter.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(../assets/fonts/inter.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../assets/fonts/inter.woff2) format('woff2');
+}
+
+/* --- 1b. @font-face: Plus Jakarta Sans 600/700/800 ---------------------- */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(../assets/fonts/plus-jakarta-sans.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../assets/fonts/plus-jakarta-sans.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(../assets/fonts/plus-jakarta-sans.woff2) format('woff2');
+}
+
+/* --- 2. Font dasar: Inter; judul/display: Plus Jakarta Sans ------------ */
+body {
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background-color: #f6f8fc;
+  color: #0f2544;
+}
+/* Use the same text font across shell pages and the embedded POS screen. */
+.shell,
+.marketing-page,
+.dashboard-page,
+.status,
+.mobile-checkout,
+body:has(#page-pos.active) .modal-backdrop {
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+  color: #0f2544;
+}
+
+/* --- 2b. Harga/total/nominal: angka tabular ---------------------------- */
+.price,
+.total,
+.amount,
+.numeric,
+.summary-total strong,
+.summary-row strong,
+#subtotal,
+#total,
+#payTotal,
+#discountValue,
+.cart-summary strong,
+.metric-grid article strong,
+.report-grid article strong,
+.breakdown-row strong,
+.table-scroll .numeric,
+.trend-column,
+[class*='price'],
+[class*='total'],
+[class*='amount'],
+[class*='nominal'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 3. GRADIENT + WARNA (nilai kontrak bersama) ------------------------ */
+/* Judul/teks utama navy; background halaman #F6F8FC (tanpa ubah geometri). */
+h1,
+h2,
+h3 {
+  color: #0f2544;
+}
+html {
+  background-color: #f6f8fc;
+}
+/* Latar kasir: menangkan atas body:has(#page-pos.active) #F6F7FB di
+   cashier-theme.css (spesifisitas sama, file ini dimuat terakhir).
+   Hanya warna — geometri kasir tidak berubah. */
+body:has(#page-pos.active),
+.shell:has(#page-pos.active),
+.shell:has(#page-pos.active) > main {
+  background-color: #f6f8fc;
+}
+
+/* Logo/brand-mark: gradient 135deg; glyph putih fastq-cart.png tetap di
+   atasnya (layer pertama). background-size berlapis: glyph 78% auto,
+   gradient cover. background-color fallback #1447E6. */
+.topbar .brand-mark {
+  background-color: #1447e6;
+  background-image: url('/fastq-cart.png'), linear-gradient(135deg, #1447e6, #1e40af);
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, center;
+  background-size:
+    78% auto,
+    cover;
+}
+
+/* Apply color and hover treatment to primary actions; preserve their layout. */
+#page-pos #payButton,
+.mobile-pay-button,
+.button.primary,
+.marketing-page .marketing-actions .primary-action {
+  background: linear-gradient(90deg, #1447e6, #1d4ed8) !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+#page-pos #payButton:hover,
+.mobile-pay-button:hover,
+.button.primary:hover,
+.marketing-page .marketing-actions .primary-action:hover {
+  background: linear-gradient(90deg, #1e40af, #1e3a8a) !important;
+  border-color: #1e40af !important;
+  color: #ffffff !important;
+}
+/* Disabled tetap abu-abu (konvensi cashier-theme.css). */
+#page-pos #payButton:disabled,
+.mobile-pay-button:disabled,
+.button.primary:disabled,
+.marketing-page .marketing-actions .primary-action:disabled {
+  background: #94a3b8 !important;
+  border-color: #94a3b8 !important;
+  box-shadow: none;
+}
+
+/* Kartu .card-surface: putih, border, shadow token Gemini. */
+.card-surface {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow:
+    0 1px 2px rgba(15, 37, 68, 0.03),
+    0 4px 12px rgba(15, 37, 68, 0.02);
+}
+
+/* --- 4. HEADER BLUR ala prototipe Gemini -------------------------------- */
+.topbar,
+.marketing-page .marketing-nav,
+.dashboard-page .dash-header {
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}

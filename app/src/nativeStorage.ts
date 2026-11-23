@@ -1,9 +1,17 @@
 import { Capacitor } from '@capacitor/core';
-import { CapacitorSQLite, SQLiteConnection, type SQLiteDBConnection } from '@capacitor-community/sqlite';
+import {
+  CapacitorSQLite,
+  SQLiteConnection,
+  type SQLiteDBConnection,
+} from '@capacitor-community/sqlite';
 
 declare global {
   interface Window {
-    PosNativeStorage?: { load: () => Promise<string | null>; save: (value: string) => Promise<void>; clear: () => Promise<void> };
+    PosNativeStorage?: {
+      load: () => Promise<string | null>;
+      save: (value: string) => Promise<void>;
+      clear: () => Promise<void>;
+    };
   }
 }
 
@@ -18,7 +26,7 @@ export async function initializeNativeStorage(): Promise<boolean> {
   const secretStatus = await connection.isSecretStored();
   if (!secretStatus.result) {
     const bytes = crypto.getRandomValues(new Uint8Array(32));
-    const secret = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    const secret = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
     await connection.setEncryptionSecret(secret);
   }
 
@@ -36,9 +44,9 @@ export async function initializeNativeStorage(): Promise<boolean> {
   window.PosNativeStorage = {
     load: async () => {
       const result = await database!.query('SELECT payload FROM pos_state WHERE id = 1');
-      return result.values?.[0]?.payload as string | undefined ?? null;
+      return (result.values?.[0]?.payload as string | undefined) ?? null;
     },
-    save: async value => {
+    save: async (value) => {
       await database!.run(
         'INSERT INTO pos_state (id, payload, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at',
         [value, new Date().toISOString()],

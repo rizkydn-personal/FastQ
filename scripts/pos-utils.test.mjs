@@ -1,20 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSaleNumber, parseCSV, uid } from '../pos-utils.mjs';
+import { createSaleNumber, createUuid } from '../shared/pos-utils.mjs';
+import { parseCSV } from './test-support/csv-parser.mjs';
 
-test('uid returns UUID v4 values from crypto.randomUUID when available', () => {
-  assert.match(uid(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+test('createUuid returns UUID v4 values from crypto.randomUUID when available', () => {
+  assert.match(
+    createUuid(),
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
 });
 
-test('uid uses Web Crypto to produce UUID v4 when randomUUID is unavailable', () => {
+test('createUuid uses Web Crypto to produce UUID v4 when randomUUID is unavailable', () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
   let sequence = 0;
   Object.defineProperty(globalThis, 'crypto', {
     configurable: true,
-    value: { getRandomValues(bytes) { bytes.fill(++sequence); return bytes; } },
+    value: {
+      getRandomValues(bytes) {
+        bytes.fill(++sequence);
+        return bytes;
+      },
+    },
   });
   try {
-    const first = uid(), second = uid();
+    const first = createUuid(),
+      second = createUuid();
     assert.match(first, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     assert.notEqual(first, second);
   } finally {
@@ -24,14 +34,20 @@ test('uid uses Web Crypto to produce UUID v4 when randomUUID is unavailable', ()
 });
 
 test('sale numbers stay compact while retaining a date and UUID-derived suffix', () => {
-  const number = createSaleNumber('550e8400-e29b-41d4-a716-446655440000', new Date(2026, 10, 19, 17, 26));
+  const number = createSaleNumber(
+    '550e8400-e29b-41d4-a716-446655440000',
+    new Date(2026, 10, 19, 17, 26),
+  );
   assert.equal(number, 'TRX-261119-550E8400E29B41D4');
   assert.equal(number.length, 27);
 });
 
 test('sale number generation rejects invalid IDs and dates', () => {
   assert.throws(() => createSaleNumber('invalid-id', new Date(2026, 10, 19)), TypeError);
-  assert.throws(() => createSaleNumber('550e8400-e29b-41d4-a716-446655440000', 'invalid date'), TypeError);
+  assert.throws(
+    () => createSaleNumber('550e8400-e29b-41d4-a716-446655440000', 'invalid date'),
+    TypeError,
+  );
 });
 
 test('CSV parser handles quoted commas, escaped quotes, and CRLF records', () => {

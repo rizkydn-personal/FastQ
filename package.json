@@ -4,11 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/copy-legacy.mjs && vite --host 127.0.0.1",
+    "dev": "node scripts/copy-public-assets.mjs && tailwindcss -i styles/design-system.css -o public/pos.css --content app/pos/index.html && tailwindcss -i styles/dashboard-utilities.css -o app/src/pages/dashboard-utilities.generated.css --content app/src/pages/OwnerDashboard.tsx && vite --host 127.0.0.1",
     "dev:all": "concurrently -k \"node scripts/dev-server.mjs\" \"npm run dev\"",
-    "build": "node scripts/copy-legacy.mjs && vite build",
-    "start": "node server.mjs",
+    "build": "npm run typecheck && npm run format:check && node scripts/copy-public-assets.mjs && tailwindcss -i styles/design-system.css -o public/pos.css --content app/pos/index.html && tailwindcss -i styles/dashboard-utilities.css -o app/src/pages/dashboard-utilities.generated.css --content app/src/pages/OwnerDashboard.tsx && vite build",
+    "start": "node server/index.mjs",
     "test": "node --test scripts/*.test.mjs",
+    "format": "prettier --write package.json tsconfig.json app/index.html app/pos/index.html \"app/src/**/*.{ts,tsx,css}\" app/pos/runtime.js \"server/**/*.mjs\" \"shared/**/*.{js,mjs}\" \"scripts/**/*.{js,mjs}\" \"styles/shell/**/*.css\" styles/design-system.css styles/shared/pos-fonts.css sw.js vite.config.ts capacitor.config.ts",
+    "format:check": "prettier --check package.json tsconfig.json app/index.html app/pos/index.html \"app/src/**/*.{ts,tsx,css}\" app/pos/runtime.js \"server/**/*.mjs\" \"shared/**/*.{js,mjs}\" \"scripts/**/*.{js,mjs}\" \"styles/shell/**/*.css\" styles/design-system.css styles/shared/pos-fonts.css sw.js vite.config.ts capacitor.config.ts",
+    "typecheck": "tsc --noEmit",
     "db:smoke": "node scripts/db-smoke.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "db:status": "node scripts/db-status.mjs",
@@ -21,7 +24,7 @@
     "pg": "^8.16.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12.0"
   },
   "devDependencies": {
     "@capacitor-community/sqlite": "^8.1.1",
@@ -29,12 +32,15 @@
     "@capacitor/android": "^8.6.2",
     "@capacitor/cli": "^8.6.2",
     "@capacitor/core": "^8.6.2",
+    "@phosphor-icons/web": "^2.1.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "concurrently": "^9.2.5",
+    "prettier": "^3.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "tailwindcss": "^3.4.17",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   }

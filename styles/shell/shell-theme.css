@@ -1,0 +1,343 @@
+/* Application shell theme: branding, navigation, sign-in, and dashboard. */
+
+/* --- Font system stack + warna dasar shell -------------------------------- */
+.marketing-page,
+.dashboard-page,
+.status {
+  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #f6f8fc;
+  color: #0f2544;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+html body:has(.marketing-page),
+html body:has(.dashboard-page),
+html body:has(.dash-login) {
+  background: #f6f8fc;
+}
+
+/* Judul: weight 800, letter-spacing -0.02em (token Gemini) */
+.marketing-page h1,
+.marketing-page h2,
+.dashboard-page h1,
+.dashboard-page h2,
+.status h1 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f2544;
+}
+
+/* Teks konten >= 13px; angka tabular-nums */
+.marketing-page p,
+.marketing-page li,
+.dashboard-page p,
+.dashboard-page td,
+.dashboard-page label,
+.dashboard-page .empty-message {
+  font-size: 13px;
+}
+.dashboard-page .metric-grid article strong,
+.dashboard-page .report-grid article strong,
+.dashboard-page .breakdown-row strong,
+.dashboard-page .table-scroll .numeric,
+.dashboard-page .trend-column {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fokus: outline 2px #1D4ED8 offset 2px */
+.marketing-page :focus-visible,
+.dashboard-page :focus-visible,
+.status :focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+/* Tanpa horizontal scroll di halaman shell (tabel tetap scroll sendiri) */
+.marketing-page,
+.dashboard-page {
+  overflow-x: clip;
+}
+
+/* ==========================================================================
+   LANDING (.marketing-page)
+   ========================================================================== */
+
+/* --- Header nav ala Gemini: 56px, putih blur, border bawah --- */
+.marketing-page .marketing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 56px;
+  max-width: none;
+  padding: 0 24px;
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+.marketing-page .marketing-brand {
+  min-height: 44px;
+  color: #0f2544;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.marketing-page .marketing-brand img {
+  width: auto;
+  height: 36px;
+}
+
+/* Tombol "Masuk" (ghost): border #E2E8F0, bg putih, teks navy, radius 12px */
+.marketing-page .marketing-login {
+  min-height: 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f2544;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03);
+}
+.marketing-page .marketing-login:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* --- Hero --- */
+.marketing-page .marketing-hero {
+  padding-top: 56px;
+}
+.marketing-page .eyebrow {
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.marketing-page .marketing-copy h1 {
+  letter-spacing: -0.02em;
+  color: #0f2544;
+}
+.marketing-page .marketing-copy > p {
+  color: #475569;
+}
+.marketing-page .marketing-note {
+  color: #475569;
+  font-size: 14px;
+}
+
+/* Tombol primer: radius 12px, teks putih bold, shadow-sm, hover #1E40AF */
+.marketing-page .marketing-actions .primary-action {
+  min-height: 48px;
+  border: 1px solid #1d4ed8;
+  border-radius: 12px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.06);
+}
+.marketing-page .marketing-actions .primary-action:hover {
+  border-color: #1e40af;
+  background: #1e40af;
+}
+/* Tombol sekunder (ghost) */
+.marketing-page .marketing-actions .secondary-action {
+  min-height: 48px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f2544;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.03);
+}
+.marketing-page .marketing-actions .secondary-action:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* --- Kartu fitur ala Gemini .card-surface: radius 16px, shadow token --- */
+.marketing-page .marketing-features article {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 37, 68, 0.03),
+    0 4px 12px rgba(15, 37, 68, 0.02);
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+.marketing-page .marketing-features article:hover {
+  border-color: #cbd5e1;
+  box-shadow:
+    0 1px 2px rgba(15, 37, 68, 0.04),
+    0 8px 20px rgba(15, 37, 68, 0.05);
+}
+.marketing-page .marketing-features article > span {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+.marketing-page .marketing-features h2 {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f2544;
+}
+.marketing-page .marketing-features p {
+  color: #475569;
+  font-size: 14px;
+}
+
+/* --- Footer --- */
+.marketing-page .marketing-footer {
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* --- Landing mobile --- */
+@media (max-width: 760px) {
+  .marketing-page .marketing-nav {
+    width: 100%;
+    height: 60px;
+    min-height: 60px;
+    margin: 0;
+    padding: 0 18px;
+  }
+  .marketing-page .marketing-brand img {
+    height: 30px;
+  }
+  .marketing-page .marketing-login {
+    min-height: 40px;
+    padding: 0 13px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  .marketing-page .marketing-hero {
+    padding-top: 28px;
+  }
+  .marketing-page .marketing-copy h1 {
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ==========================================================================
+   LOGIN (.dashboard-page > .dash-login)
+   ========================================================================== */
+
+/* Header login: 56px blur ala Gemini (bukan 68px legacy) */
+.dashboard-page .dash-header {
+  min-height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+.dashboard-page .dash-header strong {
+  color: #0f2544;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.dashboard-page .dash-header span {
+  color: #64748b;
+}
+
+/* Kartu login 440px, radius 16px, shadow token Gemini */
+.dashboard-page .dash-login {
+  width: min(440px, calc(100% - 32px));
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 37, 68, 0.03),
+    0 4px 12px rgba(15, 37, 68, 0.02);
+  padding: 32px 28px;
+}
+.dashboard-page .dash-login h1 {
+  font-size: 24px;
+  color: #0f2544;
+}
+.dashboard-page .dash-login p {
+  color: #475569;
+}
+.dashboard-page .dash-login label {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+.dashboard-page .dash-login a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+}
+.dashboard-page .dash-login a:hover {
+  color: #1e40af;
+  text-decoration: underline;
+}
+
+/* Input login: 16px (anti iOS zoom), radius 12px, bg #F8FAFC, tinggi 48px */
+.dashboard-page .dash-login input,
+.dashboard-page .dash-login select {
+  min-height: 48px;
+  font-size: 16px;
+  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0f2544;
+  padding: 0 12px;
+}
+.dashboard-page .dash-login input:focus,
+.dashboard-page .dash-login select:focus {
+  border-color: #1d4ed8;
+  background: #ffffff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.1);
+}
+
+/* Tombol primer login */
+.dashboard-page .dash-login .primary-action {
+  min-height: 48px;
+  border: 1px solid #1d4ed8;
+  border-radius: 12px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-weight: 700;
+  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.06);
+  cursor: pointer;
+}
+.dashboard-page .dash-login .primary-action:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+}
+.dashboard-page .dash-login .primary-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.dashboard-page .dash-login .error-text {
+  font-size: 13px;
+}
+
+/* Status/loading shell: samakan latar + navy */
+.status {
+  background: #f6f8fc;
+  color: #0f2544;
+}
+.status p {
+  color: #475569;
+}
+.status .primary-action {
+  min-height: 48px;
+  border: 1px solid #1d4ed8;
+  border-radius: 12px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 37, 68, 0.06);
+  cursor: pointer;
+}
+.status .primary-action:hover {
+  background: #1e40af;
+}

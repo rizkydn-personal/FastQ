@@ -1,2 +1,2 @@
 process.env.NODE_ENV = 'development';
-await import('../server.mjs');
+await import('../server/index.mjs');

@@ -1,8 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterRemoteSyncEvents, isAttendanceLocation } from '../attendance-policy.mjs';
+import { filterRemoteSyncEvents, isAttendanceLocation } from '../server/attendance-policy.mjs';
 
-const location = { latitude: -6.2, longitude: 106.8, accuracy: 18, capturedAt: '2026-11-15T10:00:00.000Z' };
+const location = {
+  latitude: -6.2,
+  longitude: 106.8,
+  accuracy: 18,
+  capturedAt: '2026-11-15T10:00:00.000Z',
+};
 
 test('attendance location validates finite coordinates and capture time', () => {
   assert.equal(isAttendanceLocation(location), true);
@@ -13,13 +18,55 @@ test('attendance location validates finite coordinates and capture time', () => 
 });
 
 test('cashiers receive attendance events without other users locations', () => {
-  const attendance = { device_id: 'device-a', event_type: 'attendance.upsert', payload: { userId: 'user-a', checkInLocation: location, checkOutLocation: location } };
+  const attendance = {
+    device_id: 'device-a',
+    event_type: 'attendance.upsert',
+    payload: { userId: 'user-a', checkInLocation: location, checkOutLocation: location },
+  };
   const sale = { device_id: 'device-b', event_type: 'sale.upsert', payload: { id: 'sale-a' } };
   const events = filterRemoteSyncEvents([attendance, sale], 'Kasir', 'device-b');
   assert.deepEqual(events, [{ ...attendance, payload: { userId: 'user-a' } }]);
 });
 
 test('administrators receive attendance locations', () => {
-  const attendance = { device_id: 'device-a', event_type: 'attendance.upsert', payload: { checkInLocation: location } };
+  const attendance = {
+    device_id: 'device-a',
+    event_type: 'attendance.upsert',
+    payload: { checkInLocation: location },
+  };
   assert.deepEqual(filterRemoteSyncEvents([attendance], 'Admin', 'device-b'), [attendance]);
+});
+
+test('cashiers do not receive product cost from remote transaction events', () => {
+  const sale = {
+    device_id: 'device-a',
+    event_type: 'sale.upsert',
+    payload: {
+      id: 'sale-a',
+      items: [{ productId: 'product-a', name: 'Teh', cost: 4000, price: 7000 }],
+    },
+  };
+  const [filtered] = filterRemoteSyncEvents([sale], 'Kasir', 'device-b');
+  assert.deepEqual(filtered.payload.items, [{ productId: 'product-a', name: 'Teh', price: 7000 }]);
+  assert.equal(sale.payload.items[0].cost, 4000);
+});
+
+test('cashiers do not receive product or variant cost from catalog events', () => {
+  const product = {
+    device_id: 'device-a',
+    event_type: 'product.upsert',
+    payload: {
+      id: 'product-a',
+      cost: 4000,
+      price: 7000,
+      variants: [{ id: 'variant-a', cost: 5000, cost_rupiah: 5000, price: 8000 }],
+    },
+  };
+  const [filtered] = filterRemoteSyncEvents([product], 'Kasir', 'device-b');
+  assert.deepEqual(filtered.payload, {
+    id: 'product-a',
+    price: 7000,
+    variants: [{ id: 'variant-a', price: 8000 }],
+  });
+  assert.equal(product.payload.variants[0].cost, 5000);
 });

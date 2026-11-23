@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#designStartupOverlay[hidden] {
+  display: none !important;
+}
+#designStartupOverlay:not([hidden]) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-width: none !important;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: #ffffff;
+}
+#designStartupOverlay[data-login-visible='true'] {
+  background: #f1f5f9;
+}
+.startup-loader-content {
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+  max-width: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 24px;
+  text-align: center;
+  box-shadow: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  min-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+body {
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  background-color: #f6f8fc;
+  color: #0f2544;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+h1,
+h2,
+h3,
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+.card-surface {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow:
+    0 1px 2px rgba(15, 37, 68, 0.03),
+    0 4px 12px rgba(15, 37, 68, 0.02);
+}
+.product-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.product-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.product-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.product-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+@media (max-width: 1023px) {
+  #mainContent {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #mainContent.has-floating-cart {
+    padding-bottom: calc(10.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+.tab-fixed-header {
+  position: fixed;
+  top: 3.5rem;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  background: rgba(246, 248, 252, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+@media (min-width: 1024px) {
+  .tab-fixed-header {
+    left: 15rem;
+  }
+}
+body.viewport-locked {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  body {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+/* Keep the POS shell and controls within narrow phone viewports. */
+#mainContent {
+  width: 100%;
+  max-width: 100%;
+}
+@media (max-width: 640px) {
+  body > header {
+    gap: 8px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  body > header > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+  body > header > div:first-child > div:first-child {
+    width: 48px;
+  }
+  body > header > div:first-child > div:last-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  body > header > div:last-child {
+    gap: 4px;
+  }
+  #mainContent {
+    min-width: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .page-section {
+    width: 100%;
+    min-width: 0;
+  }
+  #page-kasir > .grid {
+    width: 100%;
+    min-width: 0;
+  }
+  #page-kasir .card-surface {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+body.design-auth-required > :not(#designStartupOverlay):not(#designActionDialog):not(script) {
+  visibility: hidden !important;
+}
+
+.product-orbit-arena {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+}
+.product-orbit-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  will-change: transform, opacity, filter;
+  transition:
+    box-shadow 350ms ease,
+    border-color 300ms ease,
+    background-color 300ms ease,
+    color 300ms ease;
+}
+@keyframes productOrbitTextSwap {
+  from {
+    opacity: 0.4;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.product-orbit-text-swap.is-changing {
+  animation: productOrbitTextSwap 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-orbit-node,
+  .product-orbit-text-swap.is-changing {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

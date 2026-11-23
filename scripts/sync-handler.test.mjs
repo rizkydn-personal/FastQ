@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSyncHandler } from '../sync-handler.mjs';
+import { createSyncHandler } from '../server/sync-handler.mjs';
 
 test('sync event id conflict returns the stored event so the client can reconcile', async () => {
   const eventId = '00000000-0000-4000-8000-000000000021';
@@ -13,12 +13,14 @@ test('sync event id conflict returns the stored event so the client can reconcil
       if (sql.includes('INSERT INTO sync_events')) return { rows: [], rowCount: 0 };
       if (sql.includes('SELECT event_type,outlet_id,payload,occurred_at FROM sync_events')) {
         return {
-          rows: [{
-            event_type: 'sale.upsert',
-            outlet_id: 'outlet-a',
-            payload: { id: storedSaleId, number: 'TRX-STORED', status: 'Lunas' },
-            occurred_at: '2026-11-22T05:00:00.000Z',
-          }],
+          rows: [
+            {
+              event_type: 'sale.upsert',
+              outlet_id: 'outlet-a',
+              payload: { id: storedSaleId, number: 'TRX-STORED', status: 'Lunas' },
+              occurred_at: '2026-11-22T05:00:00.000Z',
+            },
+          ],
           rowCount: 1,
         };
       }
@@ -39,26 +41,31 @@ test('sync event id conflict returns the stored event so the client can reconcil
       deviceId: '00000000-0000-4000-8000-000000000001',
       cursor: 0,
       activeShiftId: null,
-      events: [{
-        id: eventId,
-        type: 'sale.upsert',
-        outletId: 'outlet-a',
-        at: '2026-11-22T05:00:00.000Z',
-        payload: { id: incomingSaleId, number: 'TRX-OTHER', status: 'Lunas' },
-      }],
+      events: [
+        {
+          id: eventId,
+          type: 'sale.upsert',
+          outletId: 'outlet-a',
+          at: '2026-11-22T05:00:00.000Z',
+          payload: { id: incomingSaleId, number: 'TRX-OTHER', status: 'Lunas' },
+        },
+      ],
     }),
     requireSameOrigin() {},
-    isUuid: value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
+    isUuid: (value) =>
+      typeof value === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
     createHash() {},
   });
 
   await assert.rejects(
     handler({ method: 'POST' }, {}, new URL('http://localhost/api/sync')),
-    error => error.status === 409
-      && error.code === 'SYNC_EVENT_ID_CONFLICT'
-      && error.conflict?.type === 'sync-event-id'
-      && error.conflict?.eventId === eventId
-      && error.conflict?.storedEvent?.payload?.id === storedSaleId,
+    (error) =>
+      error.status === 409 &&
+      error.code === 'SYNC_EVENT_ID_CONFLICT' &&
+      error.conflict?.type === 'sync-event-id' &&
+      error.conflict?.eventId === eventId &&
+      error.conflict?.storedEvent?.payload?.id === storedSaleId,
   );
 });
 
@@ -71,7 +78,10 @@ test('sync response returns the outlet stock snapshot after committing', async (
       if (sql.includes('last_cursor')) return { rows: [], rowCount: 0 };
       if (sql.includes('SELECT server_cursor')) return { rows: [], rowCount: 0 };
       if (sql.includes('SELECT product_id,variant_id,quantity')) {
-        return { rows: [{ product_id: 'product-a', variant_id: null, quantity: '12' }], rowCount: 1 };
+        return {
+          rows: [{ product_id: 'product-a', variant_id: null, quantity: '12' }],
+          rowCount: 1,
+        };
       }
       return { rows: [], rowCount: 1 };
     },
@@ -92,18 +102,20 @@ test('sync response returns the outlet stock snapshot after committing', async (
       events: [],
     }),
     requireSameOrigin() {},
-    isUuid: value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
+    isUuid: (value) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
     createHash() {},
   });
 
   const response = await handler({ method: 'POST' }, {}, new URL('http://localhost/api/sync'));
 
   assert.equal(response.status, 200);
-  assert.deepEqual(response.body.stockBalances, [{
-    outletId: 'outlet-a',
-    productId: 'product-a',
-    variantId: null,
-    quantity: 12,
-  }]);
+  assert.deepEqual(response.body.stockBalances, [
+    {
+      outletId: 'outlet-a',
+      productId: 'product-a',
+      variantId: null,
+      quantity: 12,
+    },
+  ]);
   assert.ok(calls.includes('COMMIT'));
 });

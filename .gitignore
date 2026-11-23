@@ -11,6 +11,7 @@ node_modules/
 backups/
 dist/
 public/
+app/src/pages/dashboard-utilities.generated.css
 coverage/
 .DS_Store
 android/.gradle/

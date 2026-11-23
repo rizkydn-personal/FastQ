@@ -44,7 +44,7 @@ Jangan menaruh connection string atau password database di Git, tiket, atau chat
 
 ### 2. Build di VPS
 
-Pasang Node.js 20 atau lebih baru dan Git. Buat direktori deployment milik user khusus aplikasi, lalu:
+Pasang Node.js 22.12 atau lebih baru dan Git. Buat direktori deployment milik user khusus aplikasi, lalu:
 
 ```sh
 git clone <URL-REPOSITORY> /opt/fastq-pos
@@ -54,7 +54,7 @@ npm run build
 npm prune --omit=dev
 ```
 
-Build membuat `public/` dari sumber legacy dan frontend pada `dist/`. Setelah build selesai, runtime Node hanya memerlukan dependency produksi. Jangan menghapus `public/` atau `dist/` setelah build.
+Build menjalankan pemeriksaan TypeScript dan format, membuat `public/` dari aset aplikasi, lalu membuat frontend production pada `dist/`. Setelah build selesai, runtime Node hanya memerlukan dependency produksi. Jangan menghapus `public/` atau `dist/` setelah build.
 
 Simpan environment di `/etc/fastq-pos/fastq-pos.env` dengan pemilik root dan mode `0600`. `.env.example` mencantumkan variabel aplikasi; isi `DATABASE_URL` dengan runtime role, serta buat secret acak berbeda untuk `POS_SESSION_SECRET` dan `POS_API_TOKEN`. Tambahkan `POS_TOTP_ENCRYPTION_KEY` (64 karakter hex) hanya jika TOTP digunakan. Di production, aplikasi otomatis mempercayai header reverse proxy dan memakai cookie secure; mode development menonaktifkan keduanya. Jangan sertakan `POS_MIGRATION_DATABASE_URL` pada server aplikasi.
 
@@ -74,7 +74,7 @@ WorkingDirectory=/opt/fastq-pos
 EnvironmentFile=/etc/fastq-pos/fastq-pos.env
 Environment=HOST=127.0.0.1
 Environment=PORT=4173
-ExecStart=/usr/bin/node /opt/fastq-pos/server.mjs
+ExecStart=/usr/bin/node /opt/fastq-pos/server/index.mjs
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
@@ -103,7 +103,7 @@ location / {
 }
 ```
 
-Gunakan sertifikat HTTPS valid dan buka hanya SSH, HTTP, dan HTTPS di firewall. `/` adalah landing page, `/pos` adalah kasir, `/owner` adalah dashboard. `/api/health/live` memeriksa proses; `/api/health` memeriksa database.
+Gunakan sertifikat HTTPS valid dan buka hanya SSH, HTTP, dan HTTPS di firewall. `/` adalah landing page, `/pos` adalah kasir, dan `/dashboard` adalah ringkasan penjualan. `/api/health/live` memeriksa proses; `/api/health` memeriksa database.
 
 Printer LAN dikonfigurasi dari kasir saat memilih **LAN**. Masukkan IP privat printer, port raw ESC/POS (umumnya `9100`), dan token API server. Pengaturan disimpan terenkripsi pada perangkat. Server harus berada pada jaringan yang dapat menjangkau printer; untuk VPS publik, gunakan USB/Bluetooth di perangkat kasir atau printer jaringan yang dapat dijangkau secara privat oleh server.
 
@@ -133,6 +133,8 @@ npm run dev:all
 
 Buka `http://localhost:5173`. `dev:all` menjalankan API di port 4173 dan Vite pada port 5173. Untuk web hasil build: `npm run build && npm start`, lalu buka `http://localhost:4173`. `.env.example` adalah templat environment; isi `.env` lokal dengan database pengembangan. Jangan jalankan migrasi produksi tanpa meninjau perubahan.
 
+Gunakan `npm run format` untuk merapikan source dan `npm run format:check` untuk memeriksa format. `npm run build` menjalankan pemeriksaan format dan TypeScript sebelum membuat aset production.
+
 Untuk Android, pasang seluruh dependency pengembangan lalu gunakan `npm run cap:sync`; Android SDK diperlukan untuk APK.
 
 ## Fitur
@@ -141,7 +143,7 @@ Untuk Android, pasang seluruh dependency pengembangan lalu gunakan `npm run cap:
 - Produk, varian, stok, impor/ekspor CSV, shift, absensi, kas, refund, dan persetujuan role.
 - Dashboard pemilik, laporan, antrean sinkronisasi, serta penyimpanan snapshot lokal terenkripsi.
 
-File `legacy-scripts/pos/*.js` adalah fragmen sumber yang digabung berurutan oleh `scripts/copy-legacy.mjs`; file generated di `public/` tidak diedit langsung. Migrasi database bernomor ada di `db/migrations/`; `db/schema.sql` adalah baseline.
+Frontend React ada di `app/src/`, halaman POS ada di `app/pos/`, backend ada di `server/`, dan aturan domain yang dipakai browser maupun server ada di `shared/`. Build menghasilkan aset web di `public/`, lalu Vite membuat rilis di `dist/`. Sumber gaya dan detail pipeline ada di [styles/README.md](styles/README.md). Jangan mengedit file generated di `public/` atau `dist/` langsung. Migrasi database bernomor ada di `db/migrations/`; `db/schema.sql` adalah baseline.
 
 ## Environment
 

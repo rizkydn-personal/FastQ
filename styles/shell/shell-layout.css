@@ -1,0 +1,26 @@
+/* ==========================================================================
+   3. LOGIN (.dash-login) â€” error jadi kartu alert, ritme form
+   ========================================================================== */
+.dashboard-page .dash-login form {
+  gap: 12px;
+}
+.dashboard-page .dash-login .primary-action {
+  margin-top: 4px;
+}
+.dashboard-page .dash-login .error-text {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: #d92d20;
+  font-weight: 600;
+}
+/* Error di atas grid dashboard (saat data gagal dimuat): kartu alert juga. */
+.dashboard-page .dash-content > .error-text {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: #d92d20;
+  font-weight: 600;
+}

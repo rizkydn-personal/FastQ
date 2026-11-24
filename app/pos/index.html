@@ -4175,7 +4175,7 @@
                 <td class="px-4 py-3 text-xs text-slate-500">
                   <span class="block max-w-full truncate whitespace-nowrap" title="${escapeHtml(p.sku)}">${escapeHtml(p.sku)}</span>
                 </td>
-                <td class="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">${p.category}</td>
+                <td class="px-4 py-3 text-xs text-slate-600 whitespace-normal break-words" title="${escapeHtml(p.category)}">${escapeHtml(p.category)}</td>
                 <td class="px-4 py-3 text-xs font-bold text-[#1447E6] whitespace-nowrap">${formatRupiah(p.price)}</td>
                 <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${formatRupiah(p.cost || 0)}</td>
                 <td class="px-4 py-3 text-xs font-semibold ${p.stock < 0 ? 'text-red-600' : p.stock <= 12 ? 'text-amber-600' : 'text-slate-700'} whitespace-nowrap">${p.stock} pcs</td>
@@ -6651,7 +6651,7 @@
             return `<label class="block text-xs font-semibold text-slate-600">${field.label}<input name="${field.name}" type="${type}" ${field.required === false ? '' : 'required'} ${value} ${mode ? `inputmode="${mode}"` : ''} ${numeric ? 'data-number-format' : ''} class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"></label>`;
           })
           .join('');
-        overlay.innerHTML = `<section class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"><div class="mb-4 flex items-center justify-between"><h2 class="text-base font-extrabold text-[#0F2544]">${title}</h2><button type="button" data-close class="h-8 w-8 rounded-lg border border-slate-200">×</button></div><form class="space-y-3">${rows}<p class="min-h-4 text-xs text-red-600" role="alert"></p><div class="flex gap-2"><button type="button" data-close class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Batal</button><button class="flex-1 rounded-xl bg-[#1447E6] px-3 py-2 text-sm font-bold text-white">Simpan</button></div></form></section>`;
+        overlay.innerHTML = `<section class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"><div class="mb-4 flex items-center justify-between"><h2 class="text-base font-extrabold text-[#0F2544]">${title}</h2><button type="button" data-close class="h-8 w-8 rounded-lg border border-slate-200">×</button></div><form class="space-y-3" novalidate>${rows}<p class="min-h-4 text-xs text-red-600" role="alert"></p><div class="flex gap-2"><button type="button" data-close class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Batal</button><button type="submit" class="flex-1 rounded-xl bg-[#1447E6] px-3 py-2 text-sm font-bold text-white">Simpan</button></div></form></section>`;
         overlay
           .querySelectorAll('[data-close]')
           .forEach((button) => (button.onclick = () => overlay.remove()));
@@ -6663,17 +6663,38 @@
           const form = event.currentTarget,
             button = form.querySelector('[type=submit]'),
             values = Object.fromEntries(new FormData(form));
+          if (button.disabled) return;
+          const alert = form.querySelector('[role=alert]');
+          const missingField = fields.find(
+            (field) => field.required !== false && String(values[field.name] ?? '') === '',
+          );
+          if (missingField) {
+            alert.textContent = `${missingField.label} wajib diisi.`;
+            form.elements.namedItem(missingField.name)?.focus();
+            return;
+          }
+          alert.textContent = '';
           for (const field of fields)
             if (field.type === 'number')
               values[field.name] = parseFormattedNumber(values[field.name]);
+          const idleButtonLabel = button.textContent;
           button.disabled = true;
+          button.setAttribute('aria-busy', 'true');
+          button.classList.add('inline-flex', 'items-center', 'justify-center', 'gap-2');
+          button.innerHTML =
+            '<span aria-hidden="true" class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span><span>Menyimpan…</span>';
           try {
             await onSubmit(values);
             overlay.remove();
           } catch (error) {
-            form.querySelector('[role=alert]').textContent =
-              error.message || 'Perubahan gagal disimpan.';
-            button.disabled = false;
+            alert.textContent = error.message || 'Perubahan gagal disimpan.';
+          } finally {
+            if (overlay.isConnected) {
+              button.disabled = false;
+              button.removeAttribute('aria-busy');
+              button.classList.remove('inline-flex', 'items-center', 'justify-center', 'gap-2');
+              button.textContent = idleButtonLabel;
+            }
           }
         };
         document.body.append(overlay);

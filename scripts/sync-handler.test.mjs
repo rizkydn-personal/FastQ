@@ -126,6 +126,65 @@ test('sync response returns the outlet stock snapshot after committing', async (
   assert.ok(calls.includes('COMMIT'));
 });
 
+test('incremental sync returns authoritative balances for products in remote stock events', async () => {
+  const outletId = '00000000-0000-4000-8000-000000000001';
+  const productId = '00000000-0000-4000-8000-000000000002';
+  let stockQueryParameters;
+  const client = {
+    async query(sql, parameters) {
+      if (sql.includes('minimum_cursor')) return { rows: [{ minimum_cursor: 0 }], rowCount: 1 };
+      if (sql.includes('last_cursor')) return { rows: [{ last_cursor: 1 }], rowCount: 1 };
+      if (sql.includes('SELECT server_cursor,event_id,device_id,outlet_id,event_type,payload')) {
+        return {
+          rows: [
+            {
+              server_cursor: 2,
+              event_id: '00000000-0000-4000-8000-000000000003',
+              device_id: '00000000-0000-4000-8000-000000000004',
+              outlet_id: outletId,
+              event_type: 'stock.delta',
+              payload: { productId, outletId, delta: 2 },
+              occurred_at: '2026-11-22T05:00:00.000Z',
+            },
+          ],
+          rowCount: 1,
+        };
+      }
+      if (sql.includes('COALESCE(balance.quantity,0)')) {
+        stockQueryParameters = parameters;
+        return {
+          rows: [{ product_id: productId, variant_id: null, quantity: '7' }],
+          rowCount: 1,
+        };
+      }
+      return { rows: [], rowCount: 1 };
+    },
+    release() {},
+  };
+  const handler = createSyncHandler({
+    pool: { connect: async () => client, query: async () => ({ rows: [], rowCount: 0 }) },
+    activeSession: async () => ({ outlet_id: outletId, role: 'Admin' }),
+    json: (_res, status, body) => ({ status, body }),
+    readJson: async () => ({
+      deviceId: '00000000-0000-4000-8000-000000000005',
+      cursor: 1,
+      bootstrap: false,
+      activeShiftId: null,
+      events: [],
+    }),
+    requireSameOrigin() {},
+    isUuid: (value) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
+    createHash() {},
+  });
+
+  const response = await handler({ method: 'POST' }, {}, new URL('http://localhost/api/sync'));
+  assert.equal(response.status, 200);
+  assert.deepEqual(stockQueryParameters, [outletId, [productId]]);
+  assert.deepEqual(response.body.stockBalances, [
+    { outletId, productId, variantId: null, quantity: 7 },
+  ]);
+});
+
 test('sync response flags remote sales with stock conflicts', async () => {
   const outletId = '00000000-0000-4000-8000-000000000001';
   const saleId = '00000000-0000-4000-8000-000000000022';

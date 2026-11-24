@@ -6,6 +6,7 @@ import { expectedCashForShift } from './shift-utils.mjs';
 import { roleEventTypes } from './sync-role-policy.mjs';
 import {
   collectPendingStockDeltas,
+  collectPendingStockProductIds,
   isServerReachable,
   mergeStockBalances,
   mergeShiftEvent,
@@ -557,6 +558,13 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       }
       if (result.catalogBootstrapped && Array.isArray(result.stockBalances))
         mergeStockSnapshot(state, outlet, result.stockBalances, state.syncOutbox);
+      else if (Array.isArray(result.stockBalances) && result.stockBalances.length) {
+        const pendingProductIds = collectPendingStockProductIds(state.syncOutbox);
+        const authoritativeBalances = result.stockBalances.filter(
+          (balance) => !pendingProductIds.has(balance.productId),
+        );
+        if (authoritativeBalances.length) mergeStockBalances(state, outlet, authoritativeBalances);
+      }
       for (const transfer of result.transfers || []) {
         const existing = state.transfers.find((item) => item.id === transfer.id);
         if (existing) Object.assign(existing, transfer);
@@ -723,12 +731,10 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       restoreActiveShift(state, cachedSession.user.outletId);
       persistState();
     }
-    if (!pendingLogout && navigator.onLine) {
-      if (cachedSession) {
-        session = cachedSession;
-        status = { label: 'Membuka data lokal', state: 'validating' };
-        publishStateChange();
-      }
+    if (!pendingLogout && navigator.onLine && cachedSession) {
+      session = cachedSession;
+      status = { label: 'Membuka data lokal', state: 'validating' };
+      publishStateChange();
       try {
         const result = await sendApiRequest('/api/auth/session');
         session = {

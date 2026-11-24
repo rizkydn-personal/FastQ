@@ -12,6 +12,27 @@ import { roleEventTypes } from '../shared/sync-role-policy.mjs';
 import { collectScopedEntityIds } from './sync-scope-policy.mjs';
 import { matchesStoredSyncEvent } from './sync-event-policy.mjs';
 
+function collectAffectedStockProductIds(events, isUuid) {
+  const productIds = new Set();
+  for (const event of events) {
+    const payload = event?.payload;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) continue;
+    const add = (value) => {
+      if (isUuid(value)) productIds.add(value);
+    };
+    if (event.type === 'product.upsert') add(payload.id);
+    else if (
+      event.type === 'stock.delta' ||
+      event.type === 'stock.reconcile' ||
+      event.type === 'transfer.upsert'
+    )
+      add(payload.productId);
+    else if (event.type === 'sale.upsert' && Array.isArray(payload.items))
+      for (const item of payload.items) add(item?.productId);
+  }
+  return [...productIds];
+}
+
 export function createSyncHandler({
   pool,
   activeSession,
@@ -442,13 +463,40 @@ export function createSyncHandler({
             stockConflicts.push({ saleId, stockConflict: true, stockBalances: balances });
         }
       }
-      const balances = needsBootstrap
-        ? await client.query(
-            `SELECT product_id,variant_id,quantity::text AS quantity
+      let balances;
+      if (needsBootstrap) {
+        balances = await client.query(
+          `SELECT product_id,variant_id,quantity::text AS quantity
        FROM stock_balances WHERE outlet_id=$1 ORDER BY product_id,variant_id NULLS FIRST`,
-            [scope],
-          )
-        : { rows: [] };
+          [scope],
+        );
+      } else {
+        const productIds = collectAffectedStockProductIds(
+          [
+            ...body.events,
+            ...remote.rows.map((event) => ({
+              type: event.event_type,
+              payload: event.payload,
+            })),
+          ],
+          isUuid,
+        );
+        balances = productIds.length
+          ? await client.query(
+              `SELECT product.id AS product_id,balance.variant_id,
+                      COALESCE(balance.quantity,0)::text AS quantity
+               FROM products product
+               LEFT JOIN product_variants variant ON variant.product_id=product.id
+               LEFT JOIN stock_balances balance
+                 ON balance.outlet_id=product.outlet_id AND balance.product_id=product.id
+                 AND balance.variant_id IS NOT DISTINCT FROM variant.id
+               WHERE product.outlet_id=$1 AND product.deleted_at IS NULL
+                 AND product.id=ANY($2::uuid[])
+               ORDER BY product.id,variant.id`,
+              [scope, productIds],
+            )
+          : { rows: [] };
+      }
       stockBalances = balances.rows.map((balance) => ({
         outletId: scope,
         productId: balance.product_id,

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import {
+  collectPendingStockProductIds,
   mergeStockBalances,
   mergeStockSnapshot,
   prepareSyncOutbox,
@@ -14,6 +15,10 @@ const source = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
 const runtimeSource = await readFile(new URL('../app/pos/runtime.js', import.meta.url), 'utf8');
 const posPageSource = await readFile(new URL('../app/pos/index.html', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../app/src/App.tsx', import.meta.url), 'utf8');
+const designSystemSource = await readFile(
+  new URL('../styles/design-system.css', import.meta.url),
+  'utf8',
+);
 const productXlsxSource = await readFile(
   new URL('../app/pos/product-xlsx.js', import.meta.url),
   'utf8',
@@ -24,6 +29,8 @@ const executableRuntimeSource = runtimeSource
   .concat('\nglobalThis.createPosRuntime = createPosRuntime;');
 function loadPosRuntime(context) {
   if (!context.structuredClone) context.structuredClone = structuredClone;
+  if (!context.collectPendingStockProductIds)
+    context.collectPendingStockProductIds = collectPendingStockProductIds;
   runInNewContext(executableRuntimeSource, context);
   return context.createPosRuntime;
 }
@@ -56,6 +63,7 @@ async function createClearRuntime(savedState, { online = false, fetchImpl } = {}
       removeItem: (key) => storedValues.delete(key),
     },
     navigator: { onLine: online },
+    window: { addEventListener() {} },
     roleEventTypes,
   };
   loadPosRuntime(context);
@@ -85,6 +93,43 @@ test('cashier confirmations use custom dialogs instead of browser prompts', () =
   );
   assert.match(posPageSource, /id="posConfirmDialog"/);
   assert.match(appSource, /role="alertdialog"/);
+});
+test('long product categories wrap within their table cell and render as text', () => {
+  assert.match(
+    posPageSource,
+    /class="px-4 py-3 text-xs text-slate-600 whitespace-normal break-words" title="\$\{escapeHtml\(p\.category\)\}">\$\{escapeHtml\(p\.category\)\}<\/td>/,
+  );
+});
+test('POS startup does not request the server session before login', async () => {
+  const { runtime, operations } = await createClearRuntime({}, { online: true });
+
+  await runtime.init();
+
+  assert.deepEqual(operations, []);
+});
+test('registration dialog stacks above the required login overlay', () => {
+  const startupZIndex = Number(
+    designSystemSource.match(
+      /#designStartupOverlay:not\(\[hidden\]\)\s*\{[^}]*z-index:\s*(\d+)/,
+    )?.[1],
+  );
+  const actionZIndex = Number(
+    designSystemSource.match(
+      /body\.design-auth-required\s*>\s*#designActionDialog\s*\{[^}]*z-index:\s*(\d+)/,
+    )?.[1],
+  );
+  assert.ok(actionZIndex > startupZIndex);
+});
+test('action dialogs report missing required fields inline', () => {
+  assert.match(posPageSource, /<form class="space-y-3" novalidate>/);
+  assert.match(posPageSource, /const missingField = fields\.find/);
+  assert.match(posPageSource, /wajib diisi\./);
+});
+test('action dialog submissions show a busy state and restore the button after failure', () => {
+  assert.match(posPageSource, /button\.setAttribute\('aria-busy', 'true'\)/);
+  assert.match(posPageSource, /animate-spin/);
+  assert.match(posPageSource, /Menyimpan…/);
+  assert.match(posPageSource, /button\.removeAttribute\('aria-busy'\)/);
 });
 test('product Excel template contains the expected spreadsheet columns', () => {
   const context = { window: { fflate: { strToU8, zipSync } } };
@@ -410,6 +455,91 @@ test('incremental sync without a stock snapshot preserves the cached balances', 
   await runtime.synchronize();
   assert.equal(runtime.state.products[0].stock, 7);
   assert.equal(runtime.state.products[0].stockByOutlet['outlet-a'], 7);
+});
+
+test('incremental sync reconciles remote stock while preserving products with pending local changes', async () => {
+  const outletId = 'outlet-a';
+  const savedState = {
+    products: [{ id: 'product-a', stock: 5, stockByOutlet: { [outletId]: 5 } }],
+    settings: {
+      serverSession: {
+        user: { id: 'admin-a', name: 'Admin', role: 'Admin', outletId },
+      },
+    },
+    activeOutlet: outletId,
+    syncOutbox: [],
+    syncIssues: [],
+    syncCursor: 0,
+    syncInitialized: true,
+    catalogInitialized: true,
+    stockSnapshotVersion: 1,
+    deviceId: 'device-a',
+  };
+  const context = {
+    AbortController,
+    AbortSignal,
+    clearTimeout: () => {},
+    createPosStorage: () => ({
+      readSavedState: async () => savedState,
+      queueEncryptedState() {},
+      flushEncryptedWrites: async () => {},
+    }),
+    createUuid: () => 'device-id',
+    mergeStockBalances,
+    mergeStockSnapshot,
+    navigator: { onLine: true },
+    syncCount: 0,
+    setTimeout: () => 1,
+    fetch: async (path) => {
+      if (path === '/api/health/live') return { ok: true };
+      context.syncCount += 1;
+      return {
+        ok: true,
+        json: async () => ({
+          accepted: [],
+          rejected: [],
+          events:
+            context.syncCount === 1
+              ? [
+                  {
+                    event_type: 'stock.delta',
+                    payload: { productId: 'product-a', outletId, delta: 2 },
+                  },
+                ]
+              : [],
+          stockBalances: [{ productId: 'product-a', outletId, variantId: null, quantity: 9 }],
+          transfers: [],
+          outlets: [],
+          bootstrapProducts: [],
+          catalogBootstrapped: false,
+          bootstrapTruncated: false,
+          activeShift: null,
+          knownShift: null,
+          cursor: 1,
+          hasMore: false,
+        }),
+      };
+    },
+    prepareSyncOutbox: () => ({ pending: [], issues: [] }),
+  };
+  loadPosRuntime(context);
+
+  const runtime = await context.createPosRuntime();
+  await runtime.synchronize();
+  assert.equal(runtime.state.products[0].stock, 9);
+  assert.equal(runtime.state.products[0].stockByOutlet[outletId], 9);
+
+  runtime.state.products[0].stock = 12;
+  runtime.state.products[0].stockByOutlet[outletId] = 12;
+  runtime.state.syncOutbox.push({
+    id: 'pending-stock',
+    type: 'stock.delta',
+    outletId,
+    payload: { productId: 'product-a', outletId, delta: 3 },
+  });
+  await runtime.synchronize();
+  assert.equal(runtime.state.products[0].stock, 12);
+  assert.equal(runtime.state.products[0].stockByOutlet[outletId], 12);
 });
 
 test('sync conflict response exposes negative stock and flags the local sale', async () => {

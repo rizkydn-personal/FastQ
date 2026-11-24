@@ -57,6 +57,25 @@ export function collectPendingStockDeltas(events) {
   return deltas;
 }
 
+export function collectPendingStockProductIds(events) {
+  const productIds = new Set();
+  for (const event of Array.isArray(events) ? events : []) {
+    if (!event || typeof event !== 'object' || Array.isArray(event)) continue;
+    const payload = event.payload;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) continue;
+    if (
+      ['product.upsert', 'stock.delta', 'stock.reconcile', 'transfer.upsert'].includes(event.type)
+    ) {
+      const productId = event.type === 'product.upsert' ? payload.id : payload.productId;
+      if (typeof productId === 'string' && productId) productIds.add(productId);
+    } else if (event.type === 'sale.upsert' && Array.isArray(payload.items)) {
+      for (const item of payload.items)
+        if (typeof item?.productId === 'string' && item.productId) productIds.add(item.productId);
+    }
+  }
+  return productIds;
+}
+
 export function mergeStockSnapshot(state, outletId, balances, pendingEvents = []) {
   if (
     !state ||

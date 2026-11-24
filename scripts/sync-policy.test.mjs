@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  collectPendingStockProductIds,
   collectPendingStockDeltas,
   isServerReachable,
   mergeStockBalances,
@@ -175,6 +176,22 @@ test('stock snapshots refresh outlet balances while retaining pending local stoc
   assert.equal(state.products[1].variants[0].stock, 7);
   assert.equal(state.products[1].variants[1].stock, 6);
   assert.equal(state.products[1].variants[2].stock, 10);
+});
+
+test('pending stock product IDs cover product, sale, transfer, and stock events', () => {
+  const productIds = collectPendingStockProductIds([
+    event('product', 'product.upsert', { id: 'product-a' }),
+    event('sale', 'sale.upsert', {
+      items: [{ productId: 'product-b' }, { productId: 'product-c' }],
+    }),
+    event('transfer', 'transfer.upsert', { productId: 'product-d' }),
+    event('stock', 'stock.delta', { productId: 'product-e' }),
+    event('audit', 'audit.append', { id: 'product-f' }),
+  ]);
+  assert.deepEqual(
+    [...productIds],
+    ['product-a', 'product-b', 'product-c', 'product-d', 'product-e'],
+  );
 });
 
 test('stock snapshots reset absent outlet balances to zero and reject malformed rows', () => {

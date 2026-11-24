@@ -176,6 +176,9 @@ body.viewport-locked {
 body.design-auth-required > :not(#designStartupOverlay):not(#designActionDialog):not(script) {
   visibility: hidden !important;
 }
+body.design-auth-required > #designActionDialog {
+  z-index: 10001 !important;
+}
 
 .product-orbit-arena {
   perspective: 1200px;

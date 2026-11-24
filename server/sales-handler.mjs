@@ -111,6 +111,7 @@ export function createSalesHandler({ pool, activeSession, json, isUuid }) {
         customerName: sale.customer_name || 'Umum',
         cashier: sale.cashier_name,
         status: sale.status,
+        stockConflict: !!sale.metadata?.stock_conflict,
         at: sale.occurred_at,
         subtotal: number(sale.subtotal_rupiah),
         discount: number(sale.discount_rupiah),

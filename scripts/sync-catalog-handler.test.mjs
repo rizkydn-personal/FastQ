@@ -73,3 +73,28 @@ test('customer upsert stores a canonical outlet-scoped payload', async () => {
     eventId,
   ]);
 });
+
+test('product upsert accepts a negative stock balance after an offline sale conflict', async () => {
+  const { calls, client } = queryRecorder();
+  await applyCatalogEvent({
+    client,
+    scope: outletId,
+    deviceId: eventId,
+    isUuid,
+    event: {
+      id: eventId,
+      type: 'product.upsert',
+      outletId,
+      payload: {
+        id: '00000000-0000-4000-8000-000000000004',
+        sku: 'SKU-NEG',
+        name: 'Produk konflik',
+        price: 100,
+        stockByOutlet: { [outletId]: -2 },
+        category: 'Uji',
+      },
+    },
+  });
+  const stockInsert = calls.find((call) => call.sql.includes('INSERT INTO stock_balances'));
+  assert.equal(JSON.parse(stockInsert.values[0])[0].quantity, -2);
+});

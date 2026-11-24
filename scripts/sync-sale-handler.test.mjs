@@ -34,11 +34,18 @@ function salePayload(overrides = {}) {
 
 function mockClient({ stock = 5 } = {}) {
   const calls = [];
+  let currentStock = stock;
   return {
     calls,
     async query(text, params) {
       const sql = typeof text === 'string' ? text : text.text;
       calls.push({ sql, params });
+      if (sql.includes('SELECT product_id,variant_id,quantity::text AS quantity')) {
+        return {
+          rows: [{ product_id: productId, variant_id: null, quantity: String(currentStock) }],
+          rowCount: 1,
+        };
+      }
       if (sql.includes('FROM products WHERE id=ANY')) {
         return {
           rows: [
@@ -61,7 +68,8 @@ function mockClient({ stock = 5 } = {}) {
         };
       if (sql.includes('FROM sales WHERE id=$1')) return { rows: [], rowCount: 0 };
       if (sql.includes('FROM stock_balances'))
-        return { rows: [{ quantity: String(stock) }], rowCount: 1 };
+        return { rows: [{ quantity: String(currentStock) }], rowCount: 1 };
+      if (sql.includes('UPDATE stock_balances')) currentStock = params[3];
       if (sql.includes('SELECT metadata FROM shifts')) return { rows: [], rowCount: 0 };
       if (
         sql.includes('INSERT INTO sales') ||
@@ -134,13 +142,23 @@ test('sale handler rejects a Kasir sale with a large unmarked discount before wr
   assert.ok(!client.calls.some((call) => call.sql.includes('UPDATE stock_balances')));
 });
 
-test('sale handler rejects a sale that exceeds server stock', async () => {
+test('sale handler preserves an offline stock conflict as a negative balance', async () => {
   const client = mockClient({ stock: 1 });
-  await assert.rejects(
-    runSale(client, salePayload()),
-    (error) => error.status === 409 && error.code === 'INSUFFICIENT_STOCK',
+  const result = await runSale(client, salePayload());
+  const stockUpdate = client.calls.find((call) => call.sql.includes('UPDATE stock_balances'));
+  assert.equal(stockUpdate.params[3], -1);
+  assert.ok(client.calls.some((call) => call.sql.includes('INSERT INTO sale_items')));
+  assert.ok(
+    !client.calls.some(
+      (call) =>
+        call.sql.includes('INSERT INTO stock_movements') &&
+        call.params[5] === 'Koreksi konflik stok',
+    ),
   );
-  assert.ok(!client.calls.some((call) => call.sql.includes('INSERT INTO sale_items')));
+  const savedSale = client.calls.find((call) => call.sql.includes('INSERT INTO sales'));
+  assert.equal(savedSale.params[13].stock_conflict, true);
+  assert.equal(result.stockConflict, true);
+  assert.deepEqual(result.stockBalances, [{ outletId, productId, variantId: null, quantity: -1 }]);
 });
 
 test('sale handler deducts stock atomically for a normal sale', async () => {

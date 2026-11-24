@@ -29,6 +29,7 @@ const client = await pool.connect();
 try {
   await client.query('BEGIN');
   await client.query("SELECT pg_advisory_xact_lock(hashtext('fastq-pos-schema-migrations'))");
+  await client.query('CREATE SCHEMA IF NOT EXISTS public');
   await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pos_app_runtime`);
   await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public

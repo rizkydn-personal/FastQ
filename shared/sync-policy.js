@@ -24,6 +24,16 @@ const outletStateDefaults = {
 };
 const outletStateFields = Object.keys(outletStateDefaults);
 
+export async function isServerReachable(isOnline, probe) {
+  if (!isOnline) return false;
+  try {
+    await probe();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function collectPendingStockDeltas(events) {
   const deltas = new Map();
   for (const event of Array.isArray(events) ? events : []) {
@@ -45,6 +55,25 @@ export function collectPendingStockDeltas(events) {
     deltas.set(key, (deltas.get(key) || 0) + quantity);
   }
   return deltas;
+}
+
+export function collectPendingStockProductIds(events) {
+  const productIds = new Set();
+  for (const event of Array.isArray(events) ? events : []) {
+    if (!event || typeof event !== 'object' || Array.isArray(event)) continue;
+    const payload = event.payload;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) continue;
+    if (
+      ['product.upsert', 'stock.delta', 'stock.reconcile', 'transfer.upsert'].includes(event.type)
+    ) {
+      const productId = event.type === 'product.upsert' ? payload.id : payload.productId;
+      if (typeof productId === 'string' && productId) productIds.add(productId);
+    } else if (event.type === 'sale.upsert' && Array.isArray(payload.items)) {
+      for (const item of payload.items)
+        if (typeof item?.productId === 'string' && item.productId) productIds.add(item.productId);
+    }
+  }
+  return productIds;
 }
 
 export function mergeStockSnapshot(state, outletId, balances, pendingEvents = []) {
@@ -69,7 +98,7 @@ export function mergeStockSnapshot(state, outletId, balances, pendingEvents = []
       throw new TypeError('Stock snapshot contains an invalid balance identity.');
     }
     const quantity = Number(balance.quantity);
-    if (!Number.isFinite(quantity) || quantity < 0 || quantity >= 1e15) {
+    if (!Number.isFinite(quantity) || quantity <= -1e15 || quantity >= 1e15) {
       throw new TypeError('Stock snapshot contains an invalid quantity.');
     }
     serverQuantities.set(`${balance.productId}|${balance.variantId || ''}`, quantity);
@@ -103,6 +132,62 @@ export function mergeStockSnapshot(state, outletId, balances, pendingEvents = []
   }
 }
 
+export function mergeStockBalances(state, outletId, balances, pendingEvents = []) {
+  if (
+    !state ||
+    !Array.isArray(state.products) ||
+    typeof outletId !== 'string' ||
+    !outletId ||
+    !Array.isArray(balances)
+  ) {
+    throw new TypeError('Stock updates require valid state, outlet, and balances.');
+  }
+  const pendingDeltas = collectPendingStockDeltas(pendingEvents);
+  const products = new Map(state.products.map((product) => [product.id, product]));
+  const parentBalances = new Set();
+  const affectedProducts = new Set();
+  for (const balance of balances) {
+    if (
+      !balance ||
+      typeof balance.productId !== 'string' ||
+      !balance.productId ||
+      (balance.variantId != null && typeof balance.variantId !== 'string') ||
+      balance.outletId !== outletId
+    ) {
+      throw new TypeError('Stock updates contain an invalid balance identity.');
+    }
+    const quantity = Number(balance.quantity);
+    if (!Number.isFinite(quantity) || quantity <= -1e15 || quantity >= 1e15) {
+      throw new TypeError('Stock updates contain an invalid quantity.');
+    }
+    const product = products.get(balance.productId);
+    if (!product) continue;
+    const pendingDelta =
+      pendingDeltas.get(`${outletId}|${balance.productId}|${balance.variantId || ''}`) || 0;
+    const item = balance.variantId
+      ? product.variants?.find((variant) => variant.id === balance.variantId)
+      : product;
+    if (!item) continue;
+    item.stockByOutlet ||= {};
+    item.stockByOutlet[outletId] = quantity + pendingDelta;
+    if (outletId === state.activeOutlet) item.stock = item.stockByOutlet[outletId];
+    if (balance.variantId) affectedProducts.add(product);
+    else parentBalances.add(product);
+  }
+  for (const product of affectedProducts) {
+    if (parentBalances.has(product)) continue;
+    const total = (product.variants || []).reduce(
+      (sum, variant) =>
+        sum +
+        (variant.retired ? 0 : Number(variant.stockByOutlet?.[outletId] ?? variant.stock ?? 0)),
+      0,
+    );
+    product.stockByOutlet ||= {};
+    product.stockByOutlet[outletId] = total;
+    if (outletId === state.activeOutlet) product.stock = total;
+  }
+}
+
 export function switchOutletLocalState(state, outletId) {
   if (!state || typeof outletId !== 'string' || !outletId)
     throw new TypeError('Outlet state requires a valid outlet ID.');
@@ -116,8 +201,9 @@ export function switchOutletLocalState(state, outletId) {
   }
   const currentOutletId =
     state.settings.localDataOutletId ||
-    state.settings.serverSession?.user?.outletId ||
     state.activeOutlet ||
+    state.settings.serverSession?.user?.outletId ||
+    state.settings.offlineSession?.user?.outletId ||
     'unbound';
   if (currentOutletId === outletId) {
     state.settings.localDataOutletId = outletId;
@@ -136,6 +222,18 @@ export function switchOutletLocalState(state, outletId) {
   state.settings.localDataOutletId = outletId;
   state.activeOutlet = outletId;
   return true;
+}
+
+export function restoreOfflineOutletState(state, cachedSession) {
+  const outletId = cachedSession?.user?.outletId;
+  if (typeof outletId !== 'string' || !outletId)
+    throw new TypeError('Cached session requires a valid outlet ID.');
+  state.settings ||= {};
+  state.settings.offlineSession = {
+    user: cachedSession.user,
+    expiresAt: cachedSession.expiresAt,
+  };
+  return switchOutletLocalState(state, outletId);
 }
 
 export function mergeShiftEvent(state, shift) {
@@ -276,8 +374,8 @@ export function prepareSyncOutbox({ events = [], sales = [], issues = [], outlet
       transferStockEvents.add(event);
     }
   }
-  const activeIssues = (Array.isArray(issues) ? issues : []).filter((issue) =>
-    validEvents.some((event) => event.id === issue.eventId),
+  const activeIssues = (Array.isArray(issues) ? issues : []).filter(
+    (issue) => issue?.event || validEvents.some((event) => event.id === issue.eventId),
   );
   const newIssues = [];
   let changed = activeIssues.length !== issues.length;
@@ -348,5 +446,7 @@ export function prepareSyncOutbox({ events = [], sales = [], issues = [], outlet
     newIssues,
     reviewCount: scopedOutbox.filter((event) => issueIds.has(event.id)).length,
     changed,
+    eligiblePendingCount: eligible.filter((event) => canSync(event) && !issueIds.has(event.id))
+      .length,
   };
 }

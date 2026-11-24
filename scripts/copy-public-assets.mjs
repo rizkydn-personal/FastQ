@@ -5,6 +5,7 @@ const publicDirectory = 'public';
 const serviceWorkerPath = 'sw.js';
 const appSources = [
   'app/pos/index.html',
+  'app/pos/product-xlsx.js',
   'styles/design-system.css',
   'styles/shared/pos-fonts.css',
   'app/pos/runtime.js',
@@ -15,6 +16,7 @@ const appSources = [
   'shared/shift-utils.mjs',
   'shared/sync-policy.js',
   'shared/sync-role-policy.mjs',
+  'node_modules/fflate/umd/index.js',
   'assets/fonts/inter.woff2',
   'assets/fonts/plus-jakarta-sans.woff2',
 ];
@@ -26,6 +28,7 @@ const stylesheetCopies = [
 ];
 const publicFileCopies = [
   ['app/pos/index.html', 'pos.html'],
+  ['app/pos/product-xlsx.js', 'vendor/product-xlsx.js'],
   ['app/pos/runtime.js', 'pos-runtime.js'],
   ['shared/pos-storage.mjs', 'pos-storage.mjs'],
   ['shared/pos-utils.mjs', 'pos-utils.mjs'],
@@ -105,6 +108,7 @@ async function copyPublicAssets(versionedServiceWorker) {
       copyFile(`assets/fonts/${name}`, `${publicDirectory}/assets/fonts/${name}`),
     ),
     copyFile('styles/shared/pos-fonts.css', `${publicDirectory}/pos-fonts.css`),
+    copyFile('node_modules/fflate/umd/index.js', `${publicDirectory}/vendor/fflate.js`),
     writeFile(`${publicDirectory}/sw.js`, versionedServiceWorker),
     copyIconStyles(),
   ]);

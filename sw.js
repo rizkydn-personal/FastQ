@@ -1,16 +1,19 @@
 const CACHE = 'fastq-pos-app-v46';
+const BUILD_ASSETS = [];
 const CORE_ASSETS = [
   './',
   './index.html',
   './pos',
   './pos.html',
   './pos-runtime.js',
+  './vendor/product-xlsx.js',
   './pos.css',
   './pos-fonts.css',
   './vendor/phosphor-duotone.css',
   './vendor/phosphor-bold.css',
   './vendor/phosphor-regular.css',
   './vendor/phosphor-fill.css',
+  './vendor/fflate.js',
   './vendor/Phosphor-Duotone.woff2',
   './vendor/Phosphor-Bold.woff2',
   './vendor/Phosphor.woff2',
@@ -37,11 +40,17 @@ const CORE_ASSETS = [
   './assets/fonts/plus-jakarta-sans.woff2',
 ];
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'FASTQ_ACTIVATE_UPDATE') self.skipWaiting();
+});
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
       await cache.addAll(CORE_ASSETS.map((path) => new Request(path, { cache: 'reload' })));
+
+      await Promise.allSettled(BUILD_ASSETS.map((assetPath) => cache.add(assetPath)));
 
       const appShell = await cache.match('./index.html');
       const shellHtml = appShell ? await appShell.text() : '';
@@ -56,8 +65,6 @@ self.addEventListener('install', (event) => {
           } catch {}
         }),
       );
-
-      await self.skipWaiting();
     })(),
   );
 });
@@ -76,8 +83,7 @@ self.addEventListener('activate', (event) => {
             )
             .map((cacheKey) => caches.delete(cacheKey)),
         ),
-      )
-      .then(() => self.clients.claim()),
+      ),
   );
 });
 

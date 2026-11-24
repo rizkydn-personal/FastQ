@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkDatabaseReadiness } from '../server/database-policy.mjs';
+import { checkDatabaseReadiness, REQUIRED_SCHEMA_VERSION } from '../server/database-policy.mjs';
 
 const noPrivileges = {
   is_superuser: false,
@@ -102,6 +102,34 @@ test('readiness blocks an older schema before applying required security migrati
     },
   };
   const result = await checkDatabaseReadiness(pool, 3);
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.blockers, ['schema_version_outdated']);
+});
+
+test('readiness requires the negative-stock database migration', async () => {
+  assert.equal(REQUIRED_SCHEMA_VERSION, 6);
+  const pool = {
+    async query(sql) {
+      if (sql.includes('pg_roles')) return { rowCount: 1, rows: [noPrivileges] };
+      if (sql.includes('has_table_privilege'))
+        return { rowCount: 1, rows: [{ can_write_schema_migrations: false }] };
+      if (sql.includes('to_regclass'))
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              sync_events: true,
+              sync_devices: true,
+              sync_event_retention: true,
+              auth_sessions: true,
+            },
+          ],
+        };
+      if (sql.includes('schema_migrations')) return { rowCount: 1, rows: [{ version: 5 }] };
+      throw new Error('Unexpected query');
+    },
+  };
+  const result = await checkDatabaseReadiness(pool, REQUIRED_SCHEMA_VERSION);
   assert.equal(result.ready, false);
   assert.deepEqual(result.blockers, ['schema_version_outdated']);
 });

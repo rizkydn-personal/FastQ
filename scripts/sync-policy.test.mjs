@@ -1,16 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  collectPendingStockProductIds,
   collectPendingStockDeltas,
+  isServerReachable,
+  mergeStockBalances,
   mergeShiftEvent,
   mergeStockSnapshot,
   prepareSyncOutbox,
+  restoreOfflineOutletState,
   restoreActiveShift,
   shiftCashierNames,
   switchOutletLocalState,
 } from '../shared/sync-policy.js';
 
 const event = (id, type, payload = {}, outletId = 'outlet') => ({ id, type, payload, outletId });
+
+test('cross-outlet transfer reachability skips offline probes and rejects failed probes', async () => {
+  let probes = 0;
+  const probe = async () => {
+    probes += 1;
+  };
+
+  assert.equal(await isServerReachable(false, probe), false);
+  assert.equal(probes, 0);
+  assert.equal(
+    await isServerReachable(true, async () => {
+      throw new Error('offline');
+    }),
+    false,
+  );
+  assert.equal(await isServerReachable(true, probe), true);
+  assert.equal(probes, 1);
+});
 
 test('role-specific event filtering matches server permissions', () => {
   const events = [
@@ -57,6 +79,23 @@ test('malformed outbox entries are skipped without removing them or blocking val
 
   assert.deepEqual(prepared.pending, [valid]);
   assert.deepEqual(malformed, [null, 'bad-entry', []]);
+});
+
+test('permanent sync issues stay visible after their outbox event is quarantined', () => {
+  const issue = {
+    eventId: 'blocked',
+    message: 'Invalid payload',
+    event: event('blocked', 'sale.upsert'),
+  };
+  const prepared = prepareSyncOutbox({
+    events: [],
+    sales: [],
+    issues: [issue],
+    outletId: 'outlet',
+    role: 'Kasir',
+  });
+  assert.deepEqual(prepared.issues, [issue]);
+  assert.equal(prepared.pending.length, 0);
 });
 
 test('bootstrap stock delta collection skips malformed entries and preserves valid adjustment totals', () => {
@@ -139,6 +178,22 @@ test('stock snapshots refresh outlet balances while retaining pending local stoc
   assert.equal(state.products[1].variants[2].stock, 10);
 });
 
+test('pending stock product IDs cover product, sale, transfer, and stock events', () => {
+  const productIds = collectPendingStockProductIds([
+    event('product', 'product.upsert', { id: 'product-a' }),
+    event('sale', 'sale.upsert', {
+      items: [{ productId: 'product-b' }, { productId: 'product-c' }],
+    }),
+    event('transfer', 'transfer.upsert', { productId: 'product-d' }),
+    event('stock', 'stock.delta', { productId: 'product-e' }),
+    event('audit', 'audit.append', { id: 'product-f' }),
+  ]);
+  assert.deepEqual(
+    [...productIds],
+    ['product-a', 'product-b', 'product-c', 'product-d', 'product-e'],
+  );
+});
+
 test('stock snapshots reset absent outlet balances to zero and reject malformed rows', () => {
   const product = { id: 'product', stock: 25, stockByOutlet: { 'outlet-a': 25 } };
   const state = { products: [product] };
@@ -153,6 +208,26 @@ test('stock snapshots reset absent outlet balances to zero and reject malformed 
       ]),
     /invalid balance identity/,
   );
+});
+
+test('stock snapshots and conflict updates preserve negative server balances', () => {
+  const outletId = 'outlet-a';
+  const state = {
+    activeOutlet: outletId,
+    products: [{ id: 'product', stock: 1, stockByOutlet: { [outletId]: 1 } }],
+  };
+  mergeStockSnapshot(state, outletId, [
+    { outletId, productId: 'product', variantId: null, quantity: -2 },
+  ]);
+  assert.equal(state.products[0].stock, -2);
+
+  mergeStockBalances(
+    state,
+    outletId,
+    [{ outletId, productId: 'product', variantId: null, quantity: -3 }],
+    [event('pending-stock', 'stock.delta', { productId: 'product', outletId, delta: 1 })],
+  );
+  assert.equal(state.products[0].stock, -2);
 });
 
 test('cross-outlet transfer and its stock delta are deferred without blocking valid events', () => {
@@ -192,9 +267,9 @@ test('cross-outlet transfer and its stock delta are deferred without blocking va
 
   assert.deepEqual(
     prepared.pending.map((item) => item.id),
-    ['sale'],
+    ['transfer', 'sale'],
   );
-  assert.equal(prepared.deferredCount, 2);
+  assert.equal(prepared.deferredCount, 1);
   assert.deepEqual(
     [transfer, outgoing].map((item) => item.id),
     ['transfer', 'outgoing'],
@@ -331,6 +406,39 @@ test('switching server outlets isolates local records and sync cursors', () => {
     ['event-a'],
   );
   assert.equal(state.syncCursor, 42);
+});
+
+test('active outlet owns legacy local records when no partition ID was saved', () => {
+  const state = {
+    activeOutlet: 'outlet-a',
+    settings: { serverSession: { user: { outletId: 'outlet-b' } } },
+    products: [{ id: 'product-a' }],
+  };
+
+  assert.equal(switchOutletLocalState(state, 'outlet-b'), true);
+  assert.deepEqual(state.products, []);
+  assert.deepEqual(state.localOutletPartitions['outlet-a'].products, [{ id: 'product-a' }]);
+  assert.equal(state.settings.localDataOutletId, 'outlet-b');
+});
+
+test('cached offline session restores local records when outlet metadata is missing', () => {
+  const state = {
+    products: [{ id: 'cached-product' }],
+    sales: [{ id: 'cached-sale' }],
+    settings: {},
+  };
+
+  assert.equal(
+    restoreOfflineOutletState(state, {
+      user: { id: 'cashier-a', outletId: 'outlet-a' },
+      expiresAt: '2026-11-24T00:00:00.000Z',
+    }),
+    false,
+  );
+  assert.deepEqual(state.products, [{ id: 'cached-product' }]);
+  assert.deepEqual(state.sales, [{ id: 'cached-sale' }]);
+  assert.equal(state.activeOutlet, 'outlet-a');
+  assert.equal(state.settings.localDataOutletId, 'outlet-a');
 });
 
 test('switching within one outlet keeps the active local state', () => {

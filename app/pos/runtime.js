@@ -6,15 +6,31 @@ import { expectedCashForShift } from './shift-utils.mjs';
 import { roleEventTypes } from './sync-role-policy.mjs';
 import {
   collectPendingStockDeltas,
+  collectPendingStockProductIds,
+  isServerReachable,
+  mergeStockBalances,
   mergeShiftEvent,
   mergeStockSnapshot,
   prepareSyncOutbox,
   restoreActiveShift,
+  restoreOfflineOutletState,
   switchOutletLocalState,
 } from './sync-policy.js';
 
 const PENDING_SERVER_LOGOUT_KEY = 'fastq-pending-server-logout-v1';
 const OFFLINE_SESSION_KEY = 'fastq-offline-session-v1';
+const STOCK_SNAPSHOT_VERSION = 1;
+
+function isRetryableStockConflictIssue(issue) {
+  const event = issue?.event;
+  const message = String(issue?.message || '');
+  if (event?.type === 'sale.upsert') return /stock_balances_quantity_check/i.test(message);
+  return (
+    event?.type === 'stock.delta' &&
+    String(event.payload?.reason || '').startsWith('Penjualan ') &&
+    /Delta akan membuat stok server menjadi negatif/i.test(message)
+  );
+}
 
 function readOfflineSessionProfile() {
   try {
@@ -62,13 +78,14 @@ const createEmptyState = () => ({
   deviceId: createUuid(),
   syncInitialized: false,
   catalogInitialized: false,
+  stockSnapshotVersion: 0,
 });
 const getLocalDateKey = () => new Date().toLocaleDateString('en-CA');
 
 export async function createPosRuntime({ onChange = () => {}, onToast = () => {}, ui = {} } = {}) {
   const storage = createPosStorage(() => updateSyncStatus('Penyimpanan lokal gagal', 'error'));
-  let state = (await storage.readSavedState()) || createEmptyState();
-  Object.assign(state, createEmptyState(), state);
+  const savedState = (await storage.readSavedState()) || {};
+  let state = { ...createEmptyState(), ...savedState };
   state.settings ||= {};
   state.settings.service = Number(state.settings.service) || 0;
   state.syncOutbox ||= [];
@@ -85,6 +102,10 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
   state.users ||= [];
   state.transfers ||= [];
   state.holds ||= [];
+  if (state.stockSnapshotVersion !== STOCK_SNAPSHOT_VERSION) {
+    state.catalogInitialized = false;
+    state.settings.bootstrapOffset = 0;
+  }
   let cart = Array.isArray(state.settings.cartDraft)
       ? structuredClone(state.settings.cartDraft)
       : [],
@@ -96,6 +117,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     syncing = false,
     syncAbortController = null,
     syncTimer = null,
+    syncFailureCount = 0,
+    lastHealthProbeAt = 0,
     salesLoading = false,
     salesHasMore = false,
     disposed = false,
@@ -169,7 +192,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       id: createUuid(),
       type,
       outletId: scope,
-      payload,
+      payload: structuredClone(payload),
       at: new Date().toISOString(),
     };
     state.syncOutbox.push(event);
@@ -258,6 +281,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       audit: state.audit,
       holds: state.holds,
       syncOutbox: state.syncOutbox,
+      syncIssues: state.syncIssues,
+      lastSyncAt: state.settings.lastSyncAt || null,
       status,
     };
   }
@@ -268,7 +293,11 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         if (!state.audit.some((x) => x.id === d.id)) state.audit.push(d);
         break;
       case 'outlet.upsert':
-        if (!state.outlets.some((x) => x.id === d.id)) state.outlets.push(d);
+        {
+          const old = state.outlets.find((x) => x.id === d.id);
+          if (old) Object.assign(old, d);
+          else state.outlets.push(d);
+        }
         break;
       case 'product.upsert': {
         const old = state.products.find((x) => x.id === d.id);
@@ -287,7 +316,9 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         break;
       }
       case 'product.delete':
-        state.products = state.products.filter((x) => x.id !== d.id && x.sku !== d.sku);
+        state.products = state.products.filter(
+          (x) => x.id !== d.id && !(d.sku && x.sku && x.sku === d.sku),
+        );
         break;
       case 'stock.delta':
       case 'stock.reconcile': {
@@ -298,9 +329,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         item.stockByOutlet ||= {};
         const before = Number(item.stockByOutlet[d.outletId] ?? item.stock) || 0;
         item.stockByOutlet[d.outletId] =
-          event.event_type === 'stock.reconcile'
-            ? Number(d.quantity)
-            : Math.max(0, before + Number(d.delta));
+          event.event_type === 'stock.reconcile' ? Number(d.quantity) : before + Number(d.delta);
         if (d.outletId === state.activeOutlet) item.stock = item.stockByOutlet[d.outletId];
         if (v) p.stock = (p.variants || []).reduce((n, x) => n + Number(x.stock) || 0, 0);
         break;
@@ -322,7 +351,11 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         break;
       }
       case 'transfer.upsert':
-        if (!state.transfers.some((x) => x.id === d.id)) state.transfers.push(d);
+        {
+          const old = state.transfers.find((x) => x.id === d.id);
+          if (old) Object.assign(old, d);
+          else state.transfers.push(d);
+        }
         break;
       case 'attendance.upsert': {
         const old =
@@ -333,24 +366,34 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         break;
       }
       case 'receivable.payment':
-        state.receivablePayments.push(d);
+        state.receivablePayments ||= [];
+        {
+          const old = state.receivablePayments.find((x) => x.id === d.id);
+          if (old) Object.assign(old, d);
+          else state.receivablePayments.push(d);
+        }
         break;
+      case 'discount.request':
+      case 'discount.approval':
+      case 'discount.cancel': {
+        state.discountRequests ||= [];
+        const old = state.discountRequests.find((x) => x.id === d.id);
+        if (old) Object.assign(old, d);
+        else state.discountRequests.push(d);
+        break;
+      }
     }
   }
   async function synchronizeState(manual = false) {
-    if (syncing) return;
+    if (syncing) {
+      if (!manual) return;
+      while (syncing) await new Promise((resolve) => setTimeout(resolve, 10));
+    }
     if (!session?.user) {
-      if (manual) showToast('Login kembali untuk menyinkronkan.');
       return;
     }
     if (!navigator.onLine) {
       updateSyncStatus(offlineStatusLabel(), 'offline');
-      if (manual)
-        showToast(
-          catalogNeedsBootstrap()
-            ? 'Katalog belum tersimpan. Sambungkan ke server untuk memulihkan data toko.'
-            : 'Perubahan tersimpan di perangkat dan menunggu koneksi.',
-        );
       return;
     }
     syncing = true;
@@ -358,7 +401,31 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     syncAbortController = currentSyncController;
     updateSyncStatus('Menyinkronkan…', 'syncing');
     try {
+      if (Date.now() - lastHealthProbeAt > 10_000) {
+        const health = await fetch('/api/health/live', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          signal: AbortSignal.timeout(2500),
+        });
+        if (!health.ok)
+          throw Object.assign(new Error('Server belum dapat dijangkau.'), { status: 503 });
+        lastHealthProbeAt = Date.now();
+      }
       const outlet = getActiveOutletId();
+      if (manual) {
+        const retryableIssues = state.syncIssues.filter(isRetryableStockConflictIssue);
+        if (retryableIssues.length) {
+          for (const issue of retryableIssues) {
+            if (!state.syncOutbox.some((event) => event.id === issue.eventId) && issue.event)
+              state.syncOutbox.push(issue.event);
+          }
+          const retriedIds = new Set(retryableIssues.map((issue) => issue.eventId));
+          state.syncIssues = state.syncIssues.filter((issue) => !retriedIds.has(issue.eventId));
+          persistState();
+          await flushPendingWrites();
+          publishStateChange();
+        }
+      }
       const prepared = prepareSyncOutbox({
         events: state.syncOutbox,
         sales: state.sales,
@@ -367,6 +434,30 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         role: getCurrentRole(),
       });
       state.syncIssues = prepared.issues;
+      const batch = [];
+      let batchBytes = 0;
+      for (const event of prepared.pending) {
+        const bytes = new TextEncoder().encode(JSON.stringify(event)).byteLength;
+        if (bytes > 512 * 1024) {
+          state.syncIssues.push({
+            eventId: event.id,
+            code: 'SYNC_EVENT_TOO_LARGE',
+            message: 'Event melebihi batas ukuran sinkronisasi 512 KB.',
+            retryable: false,
+            event: structuredClone(event),
+          });
+          state.syncOutbox = state.syncOutbox.filter((item) => item.id !== event.id);
+          continue;
+        }
+        if (batch.length >= 100 || (batch.length && batchBytes + bytes > 512 * 1024)) break;
+        batch.push(event);
+        batchBytes += bytes;
+      }
+      if (batch.length)
+        updateSyncStatus(
+          `Mengirim ${batch.length} dari ${prepared.pending.length} event`,
+          'syncing',
+        );
       if (getCurrentRole() === 'Admin' && !state.syncInitialized) {
         state.syncInitialized = true;
         const pending = state.syncOutbox.slice(),
@@ -377,15 +468,13 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           p.stockByOutlet = { ...(p.stockByOutlet || {}) };
           for (const id of Object.keys(p.stockByOutlet)) {
             const adjust = Number(deltas.get(`${id}|${p.id}|`) || 0);
-            p.stockByOutlet[id] = Math.max(0, Number(p.stockByOutlet[id] || 0) - adjust);
+            p.stockByOutlet[id] = Number(p.stockByOutlet[id] || 0) - adjust;
           }
           for (const v of p.variants || []) {
             v.stockByOutlet = { ...(v.stockByOutlet || {}) };
             for (const id of Object.keys(v.stockByOutlet))
-              v.stockByOutlet[id] = Math.max(
-                0,
-                Number(v.stockByOutlet[id] || 0) - Number(deltas.get(`${id}|${p.id}|${v.id}`) || 0),
-              );
+              v.stockByOutlet[id] =
+                Number(v.stockByOutlet[id] || 0) - Number(deltas.get(`${id}|${p.id}|${v.id}`) || 0);
           }
           p.stock = Number(p.stockByOutlet[outlet] ?? p.stock ?? 0);
           enqueueSyncEvent('product.upsert', p, p.createdOutletId || outlet);
@@ -409,16 +498,35 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           cursor: state.syncCursor,
           activeShiftId: state.activeShift?.id || null,
           bootstrap: !state.catalogInitialized,
-          events: prepared.pending.slice(0, 5),
+          bootstrapOffset: state.settings.bootstrapOffset || 0,
+          events: batch,
         },
         currentSyncController.signal,
       );
       const accepted = new Set(result.accepted || []);
+      for (const rejected of result.rejected || []) {
+        const event = state.syncOutbox.find((item) => item.id === rejected.id);
+        if (
+          event &&
+          !rejected.retryable &&
+          !state.syncIssues.some((issue) => issue.eventId === rejected.id)
+        )
+          state.syncIssues.push({
+            eventId: rejected.id,
+            code: rejected.code,
+            message: rejected.message,
+            retryable: !!rejected.retryable,
+            event: structuredClone(event),
+          });
+      }
+      const rejectedIds = new Set(
+        (result.rejected || []).filter((item) => !item.retryable).map((item) => item.id),
+      );
       const acceptedTransfers = state.syncOutbox
         .filter((event) => accepted.has(event.id) && event.type === 'transfer.upsert')
         .map((event) => event.payload);
       state.syncOutbox = state.syncOutbox.filter((event) => {
-        if (accepted.has(event.id)) return false;
+        if (accepted.has(event.id) || rejectedIds.has(event.id)) return false;
         if (event.type !== 'stock.delta') return true;
         const delta = event.payload || {};
         return !acceptedTransfers.some(
@@ -437,13 +545,26 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       for (const event of result.events || []) mergeSyncEvent(event);
       for (const product of result.bootstrapProducts || [])
         mergeSyncEvent({ event_type: 'product.upsert', payload: product });
+      for (const conflict of result.stockConflicts || []) {
+        const sale = state.sales.find((item) => item.id === conflict.saleId);
+        if (sale) sale.stockConflict = true;
+        if (Array.isArray(conflict.stockBalances))
+          mergeStockBalances(state, outlet, conflict.stockBalances, state.syncOutbox);
+      }
       for (const outlet of result.outlets || []) {
         const existing = state.outlets.find((item) => item.id === outlet.id);
         if (existing) Object.assign(existing, outlet);
         else state.outlets.push(outlet);
       }
-      if (result.stockBalances)
+      if (result.catalogBootstrapped && Array.isArray(result.stockBalances))
         mergeStockSnapshot(state, outlet, result.stockBalances, state.syncOutbox);
+      else if (Array.isArray(result.stockBalances) && result.stockBalances.length) {
+        const pendingProductIds = collectPendingStockProductIds(state.syncOutbox);
+        const authoritativeBalances = result.stockBalances.filter(
+          (balance) => !pendingProductIds.has(balance.productId),
+        );
+        if (authoritativeBalances.length) mergeStockBalances(state, outlet, authoritativeBalances);
+      }
       for (const transfer of result.transfers || []) {
         const existing = state.transfers.find((item) => item.id === transfer.id);
         if (existing) Object.assign(existing, transfer);
@@ -454,7 +575,18 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       if (result.knownShift)
         mergeSyncEvent({ event_type: 'shift.upsert', payload: result.knownShift });
       state.syncCursor = result.cursor ?? state.syncCursor;
-      if (result.catalogBootstrapped) state.catalogInitialized = true;
+      state.settings.lastSyncAt = new Date().toISOString();
+      if (result.catalogBootstrapped) {
+        if (result.bootstrapTruncated) {
+          state.settings.bootstrapOffset =
+            (state.settings.bootstrapOffset || 0) + (result.bootstrapProducts || []).length;
+          state.catalogInitialized = false;
+        } else {
+          state.settings.bootstrapOffset = 0;
+          state.catalogInitialized = true;
+          state.stockSnapshotVersion = STOCK_SNAPSHOT_VERSION;
+        }
+      }
       persistState();
       await flushPendingWrites();
       if (!state.catalogInitialized)
@@ -466,34 +598,73 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         state.syncOutbox.length ? 'pending' : 'synced',
       );
       publishStateChange();
-      if (result.hasMore || state.syncOutbox.some((e) => e.outletId === outlet))
-        syncTimer = setTimeout(() => synchronizeState(), 700);
+      const retryableRejected = (result.rejected || []).some((item) => item.retryable);
+      if (retryableRejected) syncFailureCount += 1;
+      else syncFailureCount = 0;
+      const remaining = prepareSyncOutbox({
+        events: state.syncOutbox,
+        sales: state.sales,
+        issues: state.syncIssues,
+        outletId: outlet,
+        role: getCurrentRole(),
+      });
+      if (result.hasMore || result.bootstrapTruncated || remaining.pending.length) {
+        clearTimeout(syncTimer);
+        const delay = retryableRejected
+          ? Math.min(60_000, 2_000 * 2 ** Math.min(syncFailureCount - 1, 5))
+          : 700;
+        syncTimer = setTimeout(() => {
+          syncTimer = null;
+          void synchronizeState();
+        }, delay);
+      }
     } catch (error) {
       if (error.code === 'LOCAL_STORAGE_WRITE_FAILED') {
         updateSyncStatus('Penyimpanan lokal gagal', 'error');
-        if (manual) showToast(error.message);
       } else if (error.code === 'CATALOG_BOOTSTRAP_UNCONFIRMED') {
         updateSyncStatus('Server belum mengirim konfirmasi katalog', 'error');
-        if (manual) showToast(error.message);
       } else if (error.status === 401 && session) {
         if (manual) {
           await clearSession(false);
-          showToast('Sesi server berakhir. Masuk kembali untuk melanjutkan sinkronisasi.');
         } else {
-          updateSyncStatus('Sesi server berakhir Â· data lokal tetap tersedia', 'offline');
+          updateSyncStatus('Sesi server berakhir · data lokal tetap tersedia', 'offline');
         }
       } else {
+        if (['SYNC_RESYNC_REQUIRED', 'SYNC_CURSOR_ROLLBACK'].includes(error.code)) {
+          state.catalogInitialized = false;
+          state.syncCursor = 0;
+          state.settings.bootstrapOffset = 0;
+          persistState();
+          updateSyncStatus('Menyegarkan katalog dari server · antrean tetap aman', 'pending');
+          if (!syncTimer)
+            syncTimer = setTimeout(() => {
+              syncTimer = null;
+              void synchronizeState();
+            }, 1500);
+          return;
+        }
         const serverUnavailable =
           !navigator.onLine || !Number.isInteger(error.status) || error.status >= 500;
         updateSyncStatus(
           catalogNeedsBootstrap()
             ? 'Katalog belum tersimpan · server perlu dijangkau'
             : serverUnavailable
-              ? 'Server tidak terjangkau Â· data lokal'
+              ? 'Server tidak terjangkau · data lokal'
               : 'Sinkronisasi gagal',
           serverUnavailable ? 'offline' : 'error',
         );
-        if (manual) showToast(error.message || 'Sinkronisasi gagal. Data tetap tersimpan lokal.');
+        if (serverUnavailable) {
+          syncFailureCount += 1;
+          const base = Math.min(60_000, 2_000 * 2 ** Math.min(syncFailureCount - 1, 5));
+          clearTimeout(syncTimer);
+          syncTimer = setTimeout(
+            () => {
+              syncTimer = null;
+              void synchronizeState();
+            },
+            Math.round(base * (0.8 + Math.random() * 0.4)),
+          );
+        }
       }
     } finally {
       if (syncAbortController === currentSyncController) syncAbortController = null;
@@ -504,6 +675,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     const result = await sendApiRequest('/api/auth/login', 'POST', { identifier, password, totp });
     if (result.requiresTotp) return result;
     setPendingServerLogout(false);
+    switchOutletLocalState(state, result.user.outletId);
     saveOfflineSessionProfile(result);
     session = result;
     state.settings.serverSession = result;
@@ -550,29 +722,19 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     const pendingLogout = hasPendingServerLogout();
     if (pendingLogout) {
       session = null;
-      state = createEmptyState();
-      cart = [];
-      cartDiscount = null;
       updateSyncStatus('Logout lokal · menunggu koneksi', 'offline');
       if (navigator.onLine) void revokePendingServerLogout();
     }
     const cachedSession = session?.user ? session : null;
     if (!pendingLogout && cachedSession) {
-      if (!state.settings.offlineSession) {
-        state.settings.offlineSession = {
-          user: cachedSession.user,
-          expiresAt: cachedSession.expiresAt,
-        };
-        persistState();
-      }
-      restoreActiveShift(state, state.activeOutlet || cachedSession.user.outletId);
+      restoreOfflineOutletState(state, cachedSession);
+      restoreActiveShift(state, cachedSession.user.outletId);
+      persistState();
     }
-    if (!pendingLogout && navigator.onLine) {
-      if (cachedSession) {
-        session = cachedSession;
-        status = { label: 'Membuka data lokal', state: 'validating' };
-        publishStateChange();
-      }
+    if (!pendingLogout && navigator.onLine && cachedSession) {
+      session = cachedSession;
+      status = { label: 'Membuka data lokal', state: 'validating' };
+      publishStateChange();
       try {
         const result = await sendApiRequest('/api/auth/session');
         session = {
@@ -583,6 +745,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         state.settings.serverSession = session;
         state.settings.offlineSession = { user: session.user, expiresAt: session.expiresAt };
         saveOfflineSessionProfile(session);
+        switchOutletLocalState(state, session.user.outletId);
         state.activeOutlet = session.user.outletId;
         restoreActiveShift(state, state.activeOutlet);
         state.settings.activeUserId = session.user.id;
@@ -593,7 +756,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       } catch (error) {
         if (error.status === 401 && cachedSession) {
           session = cachedSession;
-          updateSyncStatus('Sesi server perlu diperbarui Â· data lokal', 'offline');
+          updateSyncStatus('Sesi server perlu diperbarui · data lokal', 'offline');
         } else if (error.status === 401) {
           session = null;
           delete state.settings.serverSession;
@@ -636,18 +799,70 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     window.addEventListener('offline', () => updateSyncStatus(offlineStatusLabel(), 'offline'));
     return getStateSnapshot();
   }
-  async function logout() {
+  async function logout(force = false) {
     if (!session) return;
+    const pendingCount = () => {
+      const partitions = Object.values(state.localOutletPartitions || {});
+      return [state, ...partitions].reduce(
+        (count, partition) =>
+          count + (partition.syncOutbox?.length || 0) + (partition.syncIssues?.length || 0),
+        0,
+      );
+    };
+    const pending = pendingCount();
+    if (pending && navigator.onLine) await synchronizeState(true);
+    if (pendingCount() && !force)
+      throw new Error(
+        `Ada ${pendingCount()} event antrean/masalah sinkronisasi di seluruh outlet. Ekspor cadangan atau konfirmasi penghapusan sebelum keluar.`,
+      );
     clearTimeout(syncTimer);
     syncTimer = null;
     if (syncing) {
       syncAbortController?.abort();
       while (syncing) await new Promise((resolve) => setTimeout(resolve, 10));
     }
-    await clearSession(true);
+    if (state.syncOutbox.length || state.syncIssues.length)
+      throw new Error(
+        'Data lokal memiliki event yang belum tersinkron. Selesaikan atau ekspor masalah sinkronisasi sebelum keluar.',
+      );
+    delete state.settings.offlineSession;
+    try {
+      localStorage.removeItem(OFFLINE_SESSION_KEY);
+    } catch {}
+    await clearSession(false);
     setPendingServerLogout(true);
     await revokePendingServerLogout();
     updateSyncStatus('Keluar', 'local');
+  }
+  async function clearLocalDataAfterConfirmation(confirmed) {
+    if (!confirmed) throw new Error('Penghapusan data perangkat memerlukan konfirmasi.');
+    await clearSession(true);
+    setPendingServerLogout(true);
+    await revokePendingServerLogout();
+  }
+  function getLocalPendingCount() {
+    return [state, ...Object.values(state.localOutletPartitions || {})].reduce(
+      (count, partition) =>
+        count + (partition.syncOutbox?.length || 0) + (partition.syncIssues?.length || 0),
+      0,
+    );
+  }
+  async function clearLocalDataAfterSync() {
+    let pending = getLocalPendingCount();
+    while (pending > 0) {
+      if (!navigator.onLine)
+        throw new Error(
+          'Ada data belum tersinkron, tetapi perangkat sedang offline. Data tidak dihapus.',
+        );
+      await synchronizeState(true);
+      const remaining = getLocalPendingCount();
+      if (remaining >= pending)
+        throw new Error(
+          `Sinkronisasi belum selesai (${remaining} event atau masalah masih tertunda). Data perangkat tidak dihapus.`,
+        );
+      pending = remaining;
+    }
+    await clearLocalDataAfterConfirmation(true);
   }
   function findProductById(id) {
     return state.products.find((p) => String(p.id) === String(id) || p.sku === id || p.name === id);
@@ -827,6 +1042,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     return sale;
   }
   function toggleFavorite(id) {
+    if (!roleEventTypes[getCurrentRole()]?.has('product.favorite'))
+      return showToast('Peran akun ini tidak dapat mengubah favorit produk.');
     const p = findProductById(id);
     if (!p) return;
     p.favorite = !p.favorite;
@@ -882,6 +1099,117 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     persistState();
     publishStateChange();
     void synchronizeState();
+  }
+  async function importProducts(rows) {
+    if (!roleEventTypes[getCurrentRole()]?.has('product.upsert'))
+      throw new Error('Peran akun ini tidak dapat menambahkan produk.');
+    if (!Array.isArray(rows)) throw new TypeError('Daftar produk impor tidak valid.');
+
+    const result = { added: 0, updated: 0, errors: [] };
+    const validQuantity = (value) =>
+      Number.isFinite(value) &&
+      value >= 0 &&
+      value < 1e15 &&
+      Math.abs(value * 1000 - Math.round(value * 1000)) <= 1e-6;
+    for (const [index, row] of rows.entries()) {
+      const line = Number.isSafeInteger(row?.rowNumber) ? row.rowNumber : index + 2;
+      const sku = String(row?.sku ?? '').trim();
+      const name = String(row?.name ?? '').trim();
+      const category = String(row?.category ?? '').trim();
+      const price = row?.price === '' || row?.price == null ? Number.NaN : Number(row.price);
+      const cost = row?.cost === '' || row?.cost == null ? Number.NaN : Number(row.cost);
+      const stock = row?.stock === '' || row?.stock == null ? Number.NaN : Number(row.stock);
+      const error =
+        !sku || sku.length > 40
+          ? 'SKU wajib diisi dan maksimal 40 karakter.'
+          : !name || name.length > 80
+            ? 'Nama produk wajib diisi dan maksimal 80 karakter.'
+            : !category
+              ? 'Kategori wajib diisi.'
+              : category.length > 40
+                ? 'Kategori maksimal 40 karakter.'
+                : !Number.isSafeInteger(price) || price < 0
+                  ? 'Harga jual harus bilangan bulat nol atau lebih.'
+                  : !Number.isSafeInteger(cost) || cost < 0
+                    ? 'Modal harus bilangan bulat nol atau lebih.'
+                    : !validQuantity(stock)
+                      ? 'Stok harus nol atau lebih dengan maksimal 3 angka desimal.'
+                      : null;
+      if (error) {
+        result.errors.push({ row: line, message: error });
+        continue;
+      }
+
+      const existing = state.products.find(
+        (product) => product.sku.toLowerCase() === sku.toLowerCase(),
+      );
+      if (existing && existing.name.trim().toLowerCase() === name.toLowerCase()) {
+        const before = Number(existing.stock) || 0;
+        Object.assign(existing, { price, cost, stock });
+        enqueueSyncEvent(
+          'product.upsert',
+          existing,
+          existing.createdOutletId || state.activeOutlet,
+        );
+        if (before !== stock) {
+          state.stockMovements.unshift({
+            id: createUuid(),
+            productId: existing.id,
+            at: new Date().toISOString(),
+            before,
+            after: stock,
+            delta: stock - before,
+            reason: 'Impor Excel',
+            role: getCurrentRole(),
+          });
+          enqueueSyncEvent('stock.delta', {
+            productId: existing.id,
+            variantId: null,
+            outletId: state.activeOutlet,
+            delta: stock - before,
+            reason: 'Impor Excel',
+          });
+        }
+        result.updated += 1;
+        continue;
+      }
+
+      let productSku = sku;
+      if (existing) {
+        let suffix = 1;
+        do {
+          const marker = suffix === 1 ? '-D' : `-D${suffix}`;
+          productSku = `${sku.slice(0, 40 - marker.length)}${marker}`;
+          suffix += 1;
+        } while (
+          state.products.some((product) => product.sku.toLowerCase() === productSku.toLowerCase())
+        );
+      }
+      const product = {
+        id: createUuid(),
+        sku: productSku,
+        name,
+        category,
+        price,
+        cost,
+        stock,
+        stockByOutlet: { [state.activeOutlet]: stock },
+        variants: [],
+        favorite: false,
+        createdOutletId: state.activeOutlet,
+      };
+      state.products.unshift(product);
+      enqueueSyncEvent('product.upsert', product, state.activeOutlet);
+      result.added += 1;
+    }
+
+    if (result.added || result.updated) {
+      recordAuditEntry('Impor produk', `${result.added} ditambahkan, ${result.updated} diperbarui`);
+      persistState();
+      await flushPendingWrites();
+      void synchronizeState();
+    }
+    return result;
   }
   function adjustStock(id, { kind = 'in', amount = 0, reason = '' }) {
     if (!roleEventTypes[getCurrentRole()]?.has('stock.delta') || getCurrentRole() === 'Kasir')
@@ -1019,7 +1347,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     publishStateChange();
     void synchronizeState();
   }
-  function transferStockBetweenOutlets({
+  async function transferStockBetweenOutlets({
     from,
     to,
     productId,
@@ -1029,6 +1357,15 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
   }) {
     if (!roleEventTypes[getCurrentRole()]?.has('transfer.upsert'))
       return showToast('Peran akun ini tidak dapat mentransfer stok.');
+    const serverReachable = await isServerReachable(navigator.onLine, () =>
+      sendApiRequest('/api/health/live', 'GET', null, AbortSignal.timeout(2500)),
+    );
+    if (!serverReachable)
+      return showToast(
+        'Server tidak dapat dijangkau. Transfer stok belum dibuat; coba lagi online.',
+      );
+    if (!navigator.onLine)
+      return showToast('Koneksi terputus sebelum transfer dibuat. Tidak ada perubahan.');
     const src = state.outlets.find((x) => x.id === from || x.name === from)?.id || from,
       dst = state.outlets.find((x) => x.id === to || x.name === to)?.id || to,
       pid = String(productId || productValue || '').split(':')[0],
@@ -1280,7 +1617,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       })),
     };
   }
-  async function loadSalesHistory(reset = false) {
+  async function loadSalesHistory(reset = false, latestOnly = false) {
     if (salesLoading || !session || !navigator.onLine) return;
     if (reset) {
       state.settings.salesCursor = null;
@@ -1288,7 +1625,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     }
     salesLoading = true;
     try {
-      const cursor = state.settings.salesCursor;
+      const cursor = latestOnly ? null : state.settings.salesCursor;
       const params = new URLSearchParams({ limit: '50' });
       if (cursor) {
         params.set('before', cursor.before);
@@ -1302,7 +1639,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         else state.sales[index] = { ...state.sales[index], ...normalized };
       }
       state.sales.sort((a, b) => new Date(b.at) - new Date(a.at));
-      state.settings.salesCursor = result.next || null;
+      if (!latestOnly) state.settings.salesCursor = result.next || null;
       salesHasMore = !!result.hasMore;
       persistState();
       await flushPendingWrites();
@@ -1313,12 +1650,15 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       updateSyncStatus(
         error.code === 'LOCAL_STORAGE_WRITE_FAILED'
           ? 'Penyimpanan lokal gagal'
-          : 'Riwayat transaksi belum diperbarui Â· data lokal',
+          : 'Riwayat transaksi belum diperbarui · data lokal',
         error.code === 'LOCAL_STORAGE_WRITE_FAILED' ? 'error' : 'offline',
       );
     } finally {
       salesLoading = false;
     }
+  }
+  function refreshSalesHistory() {
+    return loadSalesHistory(false, true);
   }
   async function loadSaleDetails(id) {
     let sale = state.sales.find((item) => item.id === id || item.number === id);
@@ -1438,6 +1778,30 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     login,
     registerAccount,
     logout,
+    clearLocalDataAfterConfirmation,
+    clearLocalDataAfterSync,
+    getLocalPendingCount,
+    exportSyncBackup: () =>
+      JSON.stringify({ exportedAt: new Date().toISOString(), state }, null, 2),
+    retrySyncIssue(eventId) {
+      const issue = state.syncIssues.find((item) => item.eventId === eventId);
+      if (!issue) return false;
+      if (!state.syncOutbox.some((event) => event.id === issue.eventId) && issue.event)
+        state.syncOutbox.push(issue.event);
+      state.syncIssues = state.syncIssues.filter((item) => item.eventId !== eventId);
+      persistState();
+      void synchronizeState();
+      return true;
+    },
+    discardSyncIssue(eventId, confirmed) {
+      if (!confirmed) return false;
+      const issue = state.syncIssues.find((item) => item.eventId === eventId);
+      if (!issue) return false;
+      state.syncIssues = state.syncIssues.filter((item) => item.eventId !== eventId);
+      state.syncOutbox = state.syncOutbox.filter((event) => event.id !== eventId);
+      persistState();
+      return true;
+    },
     synchronize: synchronizeState,
     getStateSnapshot,
     getStorageDiagnostics: () => ({
@@ -1447,6 +1811,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     }),
     loadSaleDetails,
     loadSalesHistory,
+    refreshSalesHistory,
     addProductToCart,
     updateCartQuantity,
     toggleFavorite,
@@ -1459,6 +1824,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     resumeHeldSale,
     checkout,
     saveProduct,
+    importProducts,
     adjustStock,
     openCashShift,
     closeCashShift,

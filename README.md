@@ -1,6 +1,30 @@
-# FastQ POS
+<p align="center">
+  <img src="assets/branding/fastq-mark.png" alt="Logo FastQ POS" width="180">
+</p>
 
-Aplikasi kasir web untuk toko ritel dan F&B. Frontend dibangun dengan Vite/React, API berjalan pada Node.js, dan PostgreSQL Supabase menyimpan akun serta data sinkronisasi. Data kerja POS juga disimpan terenkripsi pada perangkat/browser; database tidak menggantikan backup perangkat.
+<h1 align="center">FastQ POS</h1>
+
+<p align="center">
+  Aplikasi kasir offline-first untuk toko ritel dan F&amp;B.
+</p>
+
+<p align="center">
+  <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=222222">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
+  <img alt="HTML5" src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white">
+  <img alt="CSS3" src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white">
+  <img alt="SQL" src="https://img.shields.io/badge/SQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white">
+</p>
+
+<p align="center">
+  <img alt="React" src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB">
+  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white">
+  <img alt="Capacitor" src="https://img.shields.io/badge/Capacitor-119EFF?style=for-the-badge&logo=capacitor&logoColor=white">
+  <img alt="Offline first" src="https://img.shields.io/badge/Offline--first-198754?style=for-the-badge&logo=pwa&logoColor=white">
+</p>
+
+Frontend dibangun dengan Vite/React, API berjalan pada Node.js, dan PostgreSQL Supabase menyimpan akun serta data sinkronisasi. Data kerja POS juga disimpan terenkripsi pada perangkat/browser; database tidak menggantikan backup perangkat.
 
 ## Production: VPS + Supabase
 
@@ -23,22 +47,30 @@ CREATE ROLE pos_admin
 
 GRANT CONNECT ON DATABASE postgres TO pos_app_runtime, pos_admin;
 GRANT CREATE ON DATABASE postgres TO pos_admin;
+CREATE SCHEMA IF NOT EXISTS public;
 GRANT USAGE ON SCHEMA public TO pos_app_runtime;
 GRANT USAGE, CREATE ON SCHEMA public TO pos_admin;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ```
 
-Jalankan `CREATE ROLE` hanya jika role belum ada. Jika role sudah ada dan hanya perlu mengganti password, gunakan `ALTER ROLE pos_app_runtime WITH PASSWORD 'PASSWORD_BARU';` atau `ALTER ROLE pos_admin WITH PASSWORD 'PASSWORD_BARU';`. Jangan memberikan membership ke role `postgres`, `service_role`, atau role istimewa Supabase.
+Jalankan blok tersebut pada database aplikasi sebagai `postgres`. Sesuaikan nama database pada perintah `GRANT` jika bukan `postgres`. Jalankan `CREATE ROLE` hanya jika role belum ada. Jika role sudah ada dan hanya perlu mengganti password, gunakan `ALTER ROLE pos_app_runtime WITH PASSWORD 'PASSWORD_BARU';` atau `ALTER ROLE pos_admin WITH PASSWORD 'PASSWORD_BARU';`. Jangan memberikan membership ke role `postgres`, `service_role`, atau role istimewa Supabase.
 
-Migrator mengatur default privileges objek yang dibuat `pos_admin`, memberi role runtime hak DML pada tabel dan sequence aplikasi, lalu membatasi tabel `schema_migrations` menjadi read-only. Karena itu, migrasikan database menggunakan `pos_admin` setelah kedua role dibuat.
+`CREATE SCHEMA IF NOT EXISTS` menyiapkan schema `public` bila belum ada tanpa mencoba beralih menjadi `pos_admin`; grant setelahnya memberi role migrasi izin untuk membuat objek di schema itu. `pgcrypto` disiapkan lebih dulu sebagai `postgres` agar migrasi tidak bergantung pada izin role untuk memasang extension. Jangan membuat tabel aplikasi atau `schema_migrations` secara manual di SQL Editor.
+
+Untuk database baru yang belum memiliki tabel aplikasi, jalankan `npm run db:migrate` dari komputer admin dengan `POS_MIGRATION_DATABASE_URL` milik `pos_admin`. Migrator memastikan schema `public` tersedia, membuat baseline schema versi 1, lalu menerapkan migrasi bernomor. Objek yang dibuat migrator dimiliki oleh role koneksi migrasi; role runtime diberi hak DML pada tabel dan sequence aplikasi, sementara `schema_migrations` dibatasi menjadi read-only.
+
+Jika database sudah memiliki tabel FastQ yang dibuat oleh `postgres` (termasuk database yang sebelumnya dimigrasikan melalui SQL Editor), gunakan connection string role `postgres` sebagai `POS_MIGRATION_DATABASE_URL`. `pos_admin` tidak otomatis menjadi pemilik objek lama; grant `CREATE` pada database/schema tidak memberinya hak untuk memberikan grant pada tabel tersebut atau menjalankan `ALTER`/`DROP`. Migrasi harus memakai role pemilik objek. Jangan menambahkan membership ke role istimewa atau mengubah ownership objek Supabase/extension hanya untuk mengatasi error ini.
 
 Ambil connection string dari **Connect** untuk masing-masing role dan pilih pooler **Session mode** (port `5432`) jika VPS tidak mendukung koneksi IPv6 langsung. Connection string pooler biasanya memakai nama login `nama_role.project_ref`; salin format persis yang ditampilkan dashboard.
 
 Panduan resmi: [Postgres Roles](https://supabase.com/docs/guides/database/postgres/roles) dan [izin migrasi pada database Supabase](https://supabase.com/kb/troubleshooting/resolving-permission-denied-for-database-postgres-during-migrations-78f33a).
 
 - `DATABASE_URL` adalah koneksi runtime role terbatas (`pos_app_runtime`).
-- `POS_MIGRATION_DATABASE_URL` hanya digunakan di komputer admin untuk role DDL `pos_admin`. Jangan pasang URL migrasi ini di VPS atau environment aplikasi.
+- `POS_MIGRATION_DATABASE_URL` hanya digunakan di komputer admin: pakai `pos_admin` untuk schema baru yang objeknya dibuat oleh role itu, atau pemilik objek (biasanya `postgres`) untuk schema yang sudah ada. Jangan pasang URL migrasi ini di VPS atau environment aplikasi.
 - Set `PGSSLMODE=verify-full` dan `PGSSLROOTCERT` ke file root CA PEM Supabase dari dashboard. Jangan menonaktifkan validasi sertifikat.
 - Dari mesin admin, siapkan environment lalu jalankan `npm run db:migrate`. Sesudah migrasi, `npm run db:status` memastikan role runtime, TLS, dan versi skema siap. Migrasi dijalankan sebelum merilis aplikasi baru.
+- Jika migrasi berhasil tetapi `db:status` melaporkan `sync_schema_incomplete` atau `schema_migrations_unavailable`, pastikan `DATABASE_URL` memakai role runtime pada project dan database yang sama dengan `POS_MIGRATION_DATABASE_URL`. Nama database `postgres` saja tidak menjamin kedua URL menuju project yang sama.
 
 Jangan menaruh connection string atau password database di Git, tiket, atau chat. Simpan environment produksi dengan izin baca terbatas. Password dalam URL harus di-URL-encode bila mengandung karakter khusus.
 
@@ -135,15 +167,50 @@ Buka `http://localhost:5173`. `dev:all` menjalankan API di port 4173 dan Vite pa
 
 Gunakan `npm run format` untuk merapikan source dan `npm run format:check` untuk memeriksa format. `npm run build` menjalankan pemeriksaan format dan TypeScript sebelum membuat aset production.
 
+Jalankan `npm test` untuk seluruh tes. Untuk memeriksa tipe secara terpisah, gunakan `npm run typecheck`.
+
 Untuk Android, pasang seluruh dependency pengembangan lalu gunakan `npm run cap:sync`; Android SDK diperlukan untuk APK.
 
 ## Fitur
 
-- POS dengan keranjang, diskon, pembayaran, piutang, struk, barcode, dan dukungan printer browser/native.
-- Produk, varian, stok, impor/ekspor CSV, shift, absensi, kas, refund, dan persetujuan role.
-- Dashboard pemilik, laporan, antrean sinkronisasi, serta penyimpanan snapshot lokal terenkripsi.
+- POS menyimpan transaksi dan katalog terakhir secara lokal agar transaksi tetap dapat dilakukan saat offline. Event tersimpan dalam antrean dan disinkronkan saat koneksi kembali tersedia. Jika transaksi offline menyebabkan stok melewati batas, saldo negatif disinkronkan dan ditampilkan sebagai konflik stok.
+- Pengelolaan produk dan varian, stok, impor/ekspor CSV, serta impor produk Excel `.xlsx` dengan template. Template berisi SKU, nama produk, kategori, harga jual, modal, dan stok. SKU serta nama yang sama memperbarui stok, harga jual, dan modal; SKU yang sama dengan nama berbeda akan diberi akhiran `-D` (atau akhiran unik bila diperlukan).
+- Shift dan pergerakan kas, absensi, refund, persetujuan berdasarkan role, struk, barcode, serta dukungan printer browser/native.
+- Dashboard pemilik dan laporan. Daftar transaksi laporan menampilkan lima transaksi per halaman dan diperbarui otomatis saat halaman sedang dibuka.
+- Service worker mendukung shell kasir offline. Pembaruan aplikasi diterapkan setelah pengguna memilih untuk memperbarui.
+- Tindakan **Keluar & hapus data perangkat** menyinkronkan data tertunda sebelum menghapusnya. Jika sinkronisasi gagal atau masih ada event/masalah, data tidak dihapus. Jika tidak ada data tertunda, data perangkat langsung dihapus lalu sesi keluar.
 
-Frontend React ada di `app/src/`, halaman POS ada di `app/pos/`, backend ada di `server/`, dan aturan domain yang dipakai browser maupun server ada di `shared/`. Build menghasilkan aset web di `public/`, lalu Vite membuat rilis di `dist/`. Sumber gaya dan detail pipeline ada di [styles/README.md](styles/README.md). Jangan mengedit file generated di `public/` atau `dist/` langsung. Migrasi database bernomor ada di `db/migrations/`; `db/schema.sql` adalah baseline.
+## Struktur proyek
+
+```text
+.
+├── app/
+│   ├── index.html                 # Shell aplikasi web
+│   ├── src/                       # Frontend React: routing, halaman, dan native bridge
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── pages/
+│   └── pos/                       # Antarmuka dan runtime POS
+│       ├── index.html
+│       ├── runtime.js             # State lokal, transaksi, antrean, dan sinkronisasi
+│       └── product-xlsx.js        # Pembaca Excel dan pembuat template
+├── assets/                        # Branding dan font
+├── android/                       # Proyek native Capacitor Android
+├── db/
+│   ├── schema.sql                 # Baseline skema database
+│   └── migrations/                # Migrasi skema berurutan
+├── scripts/                       # Build aset, migrasi, pemeliharaan, dan tes
+├── server/                        # API Node.js, autentikasi, dan handler domain
+├── shared/                        # Utilitas dan aturan domain browser/server
+├── styles/                        # Design system, shell, dan utilitas CSS
+├── public/                        # Aset statis hasil persiapan build
+├── dist/                          # Hasil build web production
+├── sw.js                          # Service worker sumber
+├── package.json
+└── README.md
+```
+
+Frontend React berada di `app/src/`; halaman kasir dan runtime POS berada di `app/pos/`. Backend ada di `server/`, sedangkan aturan domain yang digunakan browser maupun server ada di `shared/`. Build menyiapkan aset pada `public/`, lalu Vite menghasilkan rilis di `dist/`. Keduanya adalah direktori generated—jangan mengedit isinya langsung. Sumber gaya dan detail pipeline ada di [styles/README.md](styles/README.md).
 
 ## Environment
 

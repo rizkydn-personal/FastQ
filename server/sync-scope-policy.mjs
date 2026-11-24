@@ -23,7 +23,13 @@ export function collectScopedEntityIds(event, { scope, isUuid, budget }) {
       });
     }
     for (const [key, item] of Object.entries(value)) {
-      if (outletScopeKeys.has(key) && item != null && item !== scope) deny();
+      if (
+        outletScopeKeys.has(key) &&
+        item != null &&
+        item !== scope &&
+        !(event.type === 'transfer.upsert' && key === 'to')
+      )
+        deny();
       if (
         key === 'stockByOutlet' &&
         item &&

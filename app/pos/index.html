@@ -74,6 +74,17 @@
           <i id="syncIcon" class="ph-bold ph-arrows-clockwise text-sm text-[#1447E6] shrink-0"></i>
           <span class="hidden md:inline" id="syncStatusText">Tersinkron</span>
         </button>
+        <button
+          id="syncIssueButton"
+          type="button"
+          onclick="toggleSyncIssuePanel()"
+          aria-label="Lihat masalah sinkronisasi"
+          aria-expanded="false"
+          class="hidden items-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs font-bold text-amber-800"
+        >
+          <i class="ph-bold ph-warning-circle"></i>
+          <span id="syncIssueCount">0</span>
+        </button>
         <div
           class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50/70 border border-slate-200/70 text-xs font-semibold text-slate-600 tabular-nums whitespace-nowrap"
         >
@@ -419,13 +430,22 @@
                 Kelola katalog, harga jual, dan jumlah stok.
               </p>
             </div>
-            <button
-              onclick="openProductModal()"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1447E6] hover:bg-blue-700 text-xs font-bold text-white shadow-sm transition-colors whitespace-nowrap shrink-0"
-            >
-              <i class="ph-bold ph-plus text-sm"></i>
-              <span>Tambah produk</span>
-            </button>
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                onclick="openProductImportModal()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-[#0F2544] transition-colors whitespace-nowrap"
+              >
+                <i class="ph-bold ph-file-xls text-sm"></i>
+                <span>Impor Excel</span>
+              </button>
+              <button
+                onclick="openProductModal()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1447E6] hover:bg-blue-700 text-xs font-bold text-white shadow-sm transition-colors whitespace-nowrap"
+              >
+                <i class="ph-bold ph-plus text-sm"></i>
+                <span>Tambah produk</span>
+              </button>
+            </div>
           </div>
 
           <div class="card-surface rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1437,7 +1457,7 @@
             class="card-surface overflow-hidden rounded-2xl border border-slate-300/80 tabular-nums"
           >
             <div
-              class="flex min-h-[54px] items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/40 px-4 py-2 sm:px-6"
+              class="flex min-h-[44px] items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/40 px-4 py-1.5 sm:px-5"
             >
               <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2 sm:gap-3">
                 <span
@@ -1455,44 +1475,44 @@
               </div>
               <button
                 onclick="openCloseShiftModal()"
-                class="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-bold text-[#0F2544] transition-colors hover:border-slate-400 hover:bg-slate-50 whitespace-nowrap sm:px-4 sm:py-2 sm:text-xs"
+                class="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-1 text-[11px] font-bold text-[#0F2544] transition-colors hover:border-slate-400 hover:bg-slate-50 whitespace-nowrap sm:px-3.5 sm:py-1.5 sm:text-xs"
               >
                 Tutup shift
               </button>
             </div>
 
-            <div class="px-4 py-3.5 sm:px-6 sm:py-4">
-              <div class="pb-4">
+            <div class="px-4 py-3 sm:px-5">
+              <div class="pb-3">
                 <p class="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
                   Kas diharapkan
                 </p>
                 <p
                   id="shiftExpectedCashText"
-                  class="mt-1 font-display text-xl font-extrabold leading-tight text-[#0F2544] whitespace-nowrap tabular-nums sm:text-2xl"
+                  class="mt-0.5 font-display text-lg font-extrabold leading-tight text-[#0F2544] whitespace-nowrap tabular-nums sm:text-xl"
                 >
                   Rp 0
                 </p>
-                <p class="mt-1 text-xs text-slate-500">
+                <p class="mt-0.5 text-[11px] leading-4 text-slate-500">
                   Total saldo tunai yang seharusnya tersedia di laci kasir.
                 </p>
               </div>
 
-              <div class="grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 sm:gap-0 sm:pt-4">
+              <div class="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 sm:gap-0">
                 <div class="min-w-0 sm:pr-6">
                   <p class="text-xs text-slate-500">Kas ditetapkan (Modal awal)</p>
                   <p
                     id="shiftOpeningText"
-                    class="mt-1 text-lg font-bold text-[#0F2544] whitespace-nowrap tabular-nums"
+                    class="mt-0.5 text-base font-bold text-[#0F2544] whitespace-nowrap tabular-nums sm:text-lg"
                   >
                     Rp 0
                   </p>
-                  <p class="mt-1 text-xs text-slate-500">Saldo awal pembukaan shift</p>
+                  <p class="mt-0.5 text-[11px] text-slate-500">Saldo awal pembukaan shift</p>
                 </div>
                 <div class="min-w-0 border-l border-slate-200 pl-3 sm:pl-6">
                   <p class="text-xs text-slate-500">Dibuka oleh</p>
                   <p
                     id="activeShiftOpenerText"
-                    class="mt-1 text-lg font-bold text-[#0F2544] truncate"
+                    class="mt-0.5 text-base font-bold text-[#0F2544] truncate sm:text-lg"
                   >
                     —
                   </p>
@@ -2142,6 +2162,45 @@
 
     <!-- ==================== MODALS ==================== -->
 
+    <div
+      id="posConfirmDialog"
+      class="hidden fixed inset-0 z-[220] bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center p-4"
+      onclick="if (event.target === this) resolvePosConfirm(false);"
+    >
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="posConfirmTitle"
+        aria-describedby="posConfirmMessage"
+        tabindex="-1"
+        class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+      >
+        <h2 id="posConfirmTitle" class="text-base font-bold text-[#0F2544]">Konfirmasi</h2>
+        <p
+          id="posConfirmMessage"
+          class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600"
+        ></p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button
+            id="posConfirmCancel"
+            type="button"
+            onclick="resolvePosConfirm(false)"
+            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Batal
+          </button>
+          <button
+            id="posConfirmAccept"
+            type="button"
+            onclick="resolvePosConfirm(true)"
+            class="rounded-xl bg-[#1447E6] px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+          >
+            Lanjutkan
+          </button>
+        </div>
+      </section>
+    </div>
+
     <!-- Quick Menu & Account Drawer -->
     <div
       id="menuDrawerModal"
@@ -2269,7 +2328,16 @@
             class="w-full py-2.5 px-3 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 flex items-center justify-center gap-2 whitespace-nowrap"
           >
             <i class="ph-bold ph-sign-out text-base shrink-0"></i>
-            <span>Keluar</span>
+            <span>Kunci / ganti kasir</span>
+          </button>
+          <button
+            id="deleteLocalDataButton"
+            type="button"
+            onclick="deleteLocalDataFromPos()"
+            class="w-full py-2.5 px-3 rounded-xl border border-red-300 bg-white hover:bg-red-50 text-xs font-bold text-red-700 flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            <i class="ph-bold ph-trash text-base shrink-0"></i>
+            <span>Keluar & hapus data perangkat</span>
           </button>
         </div>
       </div>
@@ -3047,6 +3115,55 @@
       </div>
     </div>
 
+    <div
+      id="productImportModal"
+      onclick="if (event.target === this) closeModal('productImportModal');"
+      class="hidden fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5 shadow-xl space-y-4"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-base font-extrabold text-[#0F2544]">Impor produk dari Excel</h3>
+          <button
+            type="button"
+            onclick="closeModal('productImportModal')"
+            aria-label="Tutup"
+            class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500"
+          >
+            <i class="ph-bold ph-x"></i>
+          </button>
+        </div>
+        <p class="text-xs leading-5 text-slate-600">
+          Isi SKU, nama produk, kategori, harga jual, modal, dan stok pada template .xlsx. SKU dan
+          nama yang sama akan memperbarui stok, harga jual, dan modal. SKU sama dengan nama berbeda
+          akan diberi akhiran -D.
+        </p>
+        <button
+          type="button"
+          onclick="downloadProductTemplate()"
+          class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-[#0F2544] hover:bg-slate-50"
+        >
+          Unduh template Excel
+        </button>
+        <label class="block text-xs font-semibold text-slate-600">
+          Pilih file Excel (.xlsx)
+          <input
+            id="productImportFile"
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onchange="importProductsFromExcel()"
+            class="mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+          />
+        </label>
+        <p
+          id="productImportStatus"
+          role="status"
+          class="whitespace-pre-line text-xs leading-5 text-slate-600"
+        ></p>
+      </div>
+    </div>
+
     <!-- Toast Notification -->
     <div
       id="toastBox"
@@ -3070,11 +3187,12 @@
       let catalogView = 'list';
       let selectedPayMethod = 'Tunai';
       let editingProductId = null;
+      let productXlsxLoading = null;
       let selectedItemDiscount = null;
 
       // Pagination States
       let trxPage = 1;
-      const TRX_PER_PAGE = 3;
+      const TRX_PER_PAGE = 5;
       let lowStockPage = 1;
       const LOW_STOCK_PER_PAGE = 3;
       let forecastPage = 1;
@@ -3138,9 +3256,128 @@
         window._toastTimer = setTimeout(() => box.classList.add('hidden'), 2400);
       }
 
+      function loadProductScript(source, isReady) {
+        if (isReady()) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = source;
+          script.onload = () =>
+            isReady() ? resolve() : reject(new Error('Modul Excel gagal dimuat.'));
+          script.onerror = () => reject(new Error('Modul Excel tidak dapat dimuat.'));
+          document.head.append(script);
+        });
+      }
+
+      function loadProductXlsxTools() {
+        if (window.ProductXlsx && window.fflate) return Promise.resolve();
+        if (!productXlsxLoading) {
+          productXlsxLoading = loadProductScript('./vendor/fflate.js', () => !!window.fflate)
+            .then(() => loadProductScript('./vendor/product-xlsx.js', () => !!window.ProductXlsx))
+            .catch((error) => {
+              productXlsxLoading = null;
+              throw error;
+            });
+        }
+        return productXlsxLoading;
+      }
+
+      function openProductImportModal() {
+        document.getElementById('productImportFile').value = '';
+        document.getElementById('productImportStatus').textContent = '';
+        document.getElementById('productImportModal').classList.remove('hidden');
+      }
+
+      async function downloadProductTemplate() {
+        const status = document.getElementById('productImportStatus');
+        try {
+          await loadProductXlsxTools();
+          const file = new Blob([window.ProductXlsx.createTemplate()], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(file);
+          link.download = 'template-produk-fastq.xlsx';
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+          status.textContent = 'Template berhasil diunduh.';
+        } catch (error) {
+          console.error('Unable to create product import template:', error);
+          status.textContent = error.message || 'Template tidak dapat dibuat.';
+        }
+      }
+
+      async function importProductsFromExcel() {
+        const input = document.getElementById('productImportFile');
+        const status = document.getElementById('productImportStatus');
+        const file = input.files?.[0];
+        if (!file) return;
+        input.disabled = true;
+        status.textContent = 'Membaca file Excel…';
+        try {
+          if (!file.name.toLowerCase().endsWith('.xlsx'))
+            throw new Error('Gunakan file Excel .xlsx.');
+          if (file.size > 5 * 1024 * 1024) throw new Error('Ukuran file maksimal 5 MB.');
+          await loadProductXlsxTools();
+          const rows = window.ProductXlsx.parseProducts(await file.arrayBuffer());
+          if (!rows.length) throw new Error('Tidak ada data produk pada file.');
+          if (rows.length > 5000) throw new Error('Maksimal 5.000 baris produk per impor.');
+          const confirmed = await confirmPos(
+            `File berisi ${rows.length} baris. SKU dan nama yang sama akan memperbarui stok, harga jual, dan modal. Lanjutkan impor?`,
+            { title: 'Konfirmasi impor produk', confirmText: 'Impor produk' },
+          );
+          if (!confirmed) {
+            status.textContent = 'Impor dibatalkan.';
+            return;
+          }
+
+          const result = await PosRuntime.importProducts(rows);
+          const messages = [
+            `Selesai: ${result.added} ditambahkan, ${result.updated} diperbarui, ${result.errors.length} baris gagal.`,
+            ...result.errors.slice(0, 10).map((item) => `Baris ${item.row}: ${item.message}`),
+          ];
+          if (result.errors.length > 10)
+            messages.push(`Dan ${result.errors.length - 10} kesalahan lainnya.`);
+          status.textContent = messages.join('\n');
+        } catch (error) {
+          console.error('Unable to import Excel products:', error);
+          status.textContent = error.message || 'File Excel tidak dapat diimpor.';
+        } finally {
+          input.disabled = false;
+          input.value = '';
+        }
+      }
+
       function closeModal(id) {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
+      }
+
+      let confirmDialogResolver = null;
+      function resolvePosConfirm(confirmed) {
+        document.getElementById('posConfirmDialog')?.classList.add('hidden');
+        const resolve = confirmDialogResolver;
+        confirmDialogResolver = null;
+        resolve?.(confirmed);
+      }
+
+      function confirmPos(message, options = {}) {
+        const dialog = document.getElementById('posConfirmDialog');
+        if (!dialog) return Promise.reject(new Error('Dialog konfirmasi POS tidak tersedia.'));
+        if (confirmDialogResolver) resolvePosConfirm(false);
+
+        document.getElementById('posConfirmTitle').textContent = options.title || 'Konfirmasi';
+        document.getElementById('posConfirmMessage').textContent = message;
+        const acceptButton = document.getElementById('posConfirmAccept');
+        acceptButton.textContent = options.confirmText || 'Lanjutkan';
+        acceptButton.className = options.danger
+          ? 'rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700'
+          : 'rounded-xl bg-[#1447E6] px-4 py-2 text-sm font-bold text-white hover:bg-blue-700';
+        dialog.classList.remove('hidden');
+
+        return new Promise((resolve) => {
+          confirmDialogResolver = resolve;
+          requestAnimationFrame(() => document.getElementById('posConfirmCancel')?.focus());
+        });
       }
 
       async function logoutFromPos() {
@@ -3152,14 +3389,56 @@
         }
         try {
           await PosRuntime.logout();
-          showToast('Logout berhasil. Data lokal telah dihapus.');
+          showToast('Sesi kasir dikunci. Data perangkat tetap tersimpan.');
         } catch (error) {
+          if (String(error.message || '').includes('event antrean')) {
+            const remove = await confirmPos(
+              `${error.message}\n\nPilih OK untuk mengunduh cadangan lalu mengonfirmasi penghapusan data perangkat.`,
+              { title: 'Event belum tersinkron', confirmText: 'Unduh cadangan' },
+            );
+            if (remove) {
+              const backup = PosRuntime.exportSyncBackup();
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(new Blob([backup], { type: 'application/json' }));
+              link.download = `fastq-sync-backup-${Date.now()}.json`;
+              link.click();
+              URL.revokeObjectURL(link.href);
+              const confirmed = await confirmPos(
+                'Cadangan telah diunduh. Hapus seluruh data lokal perangkat sekarang?',
+                { title: 'Hapus data lokal?', confirmText: 'Hapus data', danger: true },
+              );
+              if (confirmed) {
+                await PosRuntime.clearLocalDataAfterConfirmation(true);
+                showToast('Data lokal perangkat telah dihapus sesuai konfirmasi.');
+                return;
+              }
+            }
+          }
           showToast(error.message || 'Logout gagal.');
         } finally {
           if (button) {
             button.disabled = false;
-            button.querySelector('span').textContent = 'Keluar';
+            button.querySelector('span').textContent = 'Kunci / ganti kasir';
           }
+        }
+      }
+
+      async function deleteLocalDataFromPos() {
+        const button = document.getElementById('deleteLocalDataButton');
+        const label = button?.querySelector('span');
+        const originalLabel = label?.textContent || 'Keluar & hapus data perangkat';
+        if (button?.disabled) return;
+        if (button) button.disabled = true;
+        try {
+          if (label)
+            label.textContent = PosRuntime.getLocalPendingCount() ? 'Menyinkronkan…' : 'Menghapus…';
+          await PosRuntime.clearLocalDataAfterSync();
+          showToast('Data perangkat dihapus dan Anda telah keluar.');
+        } catch (error) {
+          showToast(error.message || 'Data perangkat tidak dapat dihapus.');
+        } finally {
+          if (button) button.disabled = false;
+          if (label) label.textContent = originalLabel;
         }
       }
 
@@ -3241,7 +3520,10 @@
         });
 
         if (page === 'produk') renderProductsTable();
-        if (page === 'laporan') renderReportsPage();
+        if (page === 'laporan') {
+          renderReportsPage();
+          void PosRuntime?.refreshSalesHistory();
+        }
         if (page === 'shift') renderShiftPage();
         if (page === 'absen') renderAttendancePage();
         if (page === 'outlet') renderOutletPage();
@@ -3392,7 +3674,7 @@
                 <div class="flex items-center gap-2 mt-0.5 text-[11px] whitespace-nowrap tabular-nums">
                   <span class="font-bold text-[#1447E6]">${formatRupiah(p.price)}</span>
                   <span class="text-slate-300">|</span>
-                  <span class="text-slate-500">Stok ${p.stock} pcs</span>
+                  <span class="${p.stock < 0 ? 'font-bold text-red-600' : 'text-slate-500'}">Stok ${p.stock} pcs</span>
                 </div>
               </div>
             </div>
@@ -3834,7 +4116,7 @@
           });
           if (!sale) return;
           closeModal('checkoutModal');
-          showToast('Transaksi ' + sale.number + ' tersimpan di perangkat.');
+          showToast('Transaksi tersimpan.');
         } catch (error) {
           showToast(error.message || 'Transaksi belum tersimpan.');
         }
@@ -3868,7 +4150,7 @@
               <div class="py-3 flex items-center justify-between gap-2.5">
                 <div class="min-w-0">
                   <p class="text-xs font-bold text-[#0F2544] truncate whitespace-nowrap">${p.name}</p>
-                  <p class="text-[11px] text-slate-400 truncate whitespace-nowrap mt-0.5">${p.sku} · ${p.category} · <span class="${p.stock <= 12 ? 'font-bold text-amber-600' : 'text-slate-600'}">Stok ${p.stock}</span></p>
+                  <p class="text-[11px] text-slate-400 truncate whitespace-nowrap mt-0.5">${p.sku} · ${p.category} · <span class="${p.stock < 0 ? 'font-bold text-red-600' : p.stock <= 12 ? 'font-bold text-amber-600' : 'text-slate-600'}">Stok ${p.stock}</span></p>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   <span class="text-xs font-extrabold text-[#1447E6] whitespace-nowrap">${formatRupiah(p.price)}</span>
@@ -3890,11 +4172,13 @@
                     (p) => `
               <tr class="hover:bg-slate-50/80 transition-colors">
                 <td class="px-5 py-3 text-xs sm:text-sm font-bold text-[#0F2544]"><span class="block max-w-[200px] truncate whitespace-nowrap" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span></td>
-                <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${p.sku}</td>
+                <td class="px-4 py-3 text-xs text-slate-500">
+                  <span class="block max-w-full truncate whitespace-nowrap" title="${escapeHtml(p.sku)}">${escapeHtml(p.sku)}</span>
+                </td>
                 <td class="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">${p.category}</td>
                 <td class="px-4 py-3 text-xs font-bold text-[#1447E6] whitespace-nowrap">${formatRupiah(p.price)}</td>
                 <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${formatRupiah(p.cost || 0)}</td>
-                <td class="px-4 py-3 text-xs font-semibold ${p.stock <= 12 ? 'text-amber-600' : 'text-slate-700'} whitespace-nowrap">${p.stock} pcs</td>
+                <td class="px-4 py-3 text-xs font-semibold ${p.stock < 0 ? 'text-red-600' : p.stock <= 12 ? 'text-amber-600' : 'text-slate-700'} whitespace-nowrap">${p.stock} pcs</td>
                 <td class="px-5 py-3 text-right whitespace-nowrap">
                   <button type="button" onclick="openProductModal('${p.id}')" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F2544]">Ubah</button>
                 </td>
@@ -4039,6 +4323,9 @@
             cat === '__new__' ? document.getElementById('prodFormNewCategory').value.trim() : cat;
         if (!name || !sku || !categoryValue)
           return showToast('Nama, SKU, dan kategori wajib diisi.');
+        const existingProduct = editingProductId
+          ? products.find((item) => item.id === editingProductId)
+          : null;
         const price = getNumericInputValue('prodFormPrice'),
           cost = getNumericInputValue('prodFormCost'),
           stock = getNumericInputValue('prodFormStock');
@@ -4048,7 +4335,7 @@
           !Number.isSafeInteger(cost) ||
           cost < 0 ||
           !Number.isFinite(stock) ||
-          stock < 0
+          (stock < 0 && stock !== Number(existingProduct?.stock))
         )
           return showToast('Harga, modal, dan stok tidak valid.');
         window.PosRuntime.saveProduct(
@@ -5042,6 +5329,7 @@
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   <span class="hidden 2xl:inline text-[11px] font-semibold ${isRefunded ? 'text-red-600' : 'text-[#1447E6]'} whitespace-nowrap">${escapeHtml(t.status || 'Lunas')}</span>
+                  ${t.stockConflict ? '<span class="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700 whitespace-nowrap">KONFLIK STOK</span>' : ''}
                   <span class="text-xs font-extrabold text-[#0F2544] whitespace-nowrap">${formatRupiah(t.total)}</span>
                   <button onclick="event.stopPropagation(); refundTransaction(${realIndex})" ${isRefunded ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border border-red-200/80 bg-white hover:bg-red-50 disabled:opacity-40 text-[11px] font-semibold text-red-600 transition-colors whitespace-nowrap">Refund</button>
                 </div>
@@ -5774,9 +6062,16 @@
       }
 
       function triggerSync() {
-        Promise.resolve(window.PosRuntime?.synchronize(true))
-          .then(() => showToast('Sinkronisasi aplikasi selesai.'))
-          .catch((error) => showToast(error.message || 'Sinkronisasi gagal.'));
+        void window.PosRuntime?.synchronize(true);
+      }
+      function toggleSyncIssuePanel() {
+        const panel = document.getElementById('syncIssuePanel');
+        const button = document.getElementById('syncIssueButton');
+        if (!panel || button?.classList.contains('hidden')) return;
+        const open = panel.dataset.open !== 'true';
+        panel.dataset.open = String(open);
+        panel.classList.toggle('hidden', !open);
+        button?.setAttribute('aria-expanded', String(open));
       }
       function exportReport() {
         const period = document.getElementById('laporanPeriodSelect')?.value || 'Bulan ini';
@@ -5808,11 +6103,98 @@
       }
 
       function refreshPosFromRuntime(data = PosRuntime?.getStateSnapshot()) {
+        const issues = data?.syncIssues || [];
+        const isOffline = !navigator.onLine || data?.status?.state === 'offline';
+        document.getElementById('offlineStatusBanner')?.remove();
         const syncIcon = document.getElementById('syncIcon');
         const syncText = document.getElementById('syncStatusText');
         const isSyncing = data?.status?.state === 'syncing';
-        if (syncIcon) syncIcon.classList.toggle('animate-spin', isSyncing);
-        if (syncText && data?.status?.label) syncText.textContent = data.status.label;
+        if (syncIcon) {
+          syncIcon.classList.toggle('animate-spin', isSyncing);
+          syncIcon.classList.toggle('text-red-600', isOffline);
+          syncIcon.classList.toggle('text-[#1447E6]', !isOffline);
+        }
+        if (syncText) {
+          syncText.style.display = isOffline ? 'none' : '';
+        }
+        if (syncText && !isOffline && data?.status?.label)
+          syncText.textContent = issues.length ? `${issues.length} masalah` : data.status.label;
+        const syncButton = syncText?.closest('button');
+        if (syncButton)
+          syncButton.title = isOffline
+            ? 'Offline · data tersimpan lokal'
+            : `Status: ${data?.status?.label || 'Lokal'} · Sinkron terakhir: ${data?.lastSyncAt ? new Date(data.lastSyncAt).toLocaleString('id-ID') : 'belum ada'} · Masalah: ${(data?.syncIssues || []).length}`;
+        const issueButton = document.getElementById('syncIssueButton');
+        const issueCount = document.getElementById('syncIssueCount');
+        issueButton?.classList.toggle('hidden', issues.length === 0);
+        issueButton?.classList.toggle('inline-flex', issues.length > 0);
+        issueCount?.replaceChildren(document.createTextNode(String(issues.length)));
+        let issuePanel = document.getElementById('syncIssuePanel');
+        if (!issuePanel) {
+          issuePanel = document.createElement('section');
+          issuePanel.id = 'syncIssuePanel';
+          issuePanel.className =
+            'hidden fixed top-14 right-3 z-50 max-h-[55vh] w-[min(32rem,calc(100vw-1.5rem))] overflow-auto rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-xl';
+          issuePanel.dataset.open = 'false';
+          document.body.append(issuePanel);
+        }
+        issuePanel.replaceChildren();
+        if (issues.length) {
+          issuePanel.classList.toggle('hidden', issuePanel.dataset.open !== 'true');
+          const title = document.createElement('h2');
+          title.className = 'mb-2 font-bold';
+          title.textContent = `Masalah sinkronisasi (${issues.length})`;
+          issuePanel.append(title);
+          for (const issue of issues) {
+            const row = document.createElement('div');
+            row.className = 'mb-3 border-b border-amber-200 pb-3';
+            const message = document.createElement('p');
+            message.className = 'mb-2';
+            message.textContent = issue.message || issue.code || issue.eventId;
+            row.append(message);
+            for (const [label, action] of [
+              ['Coba lagi', () => PosRuntime.retrySyncIssue(issue.eventId)],
+              [
+                'Buang',
+                async () => {
+                  if (
+                    await confirmPos('Buang event bermasalah ini dari perangkat?', {
+                      title: 'Buang event bermasalah?',
+                      confirmText: 'Buang',
+                      danger: true,
+                    })
+                  )
+                    PosRuntime.discardSyncIssue(issue.eventId, true);
+                },
+              ],
+            ]) {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'mr-2 rounded bg-white px-2 py-1 text-xs font-semibold';
+              button.textContent = label;
+              button.onclick = action;
+              row.append(button);
+            }
+            issuePanel.append(row);
+          }
+          const exportButton = document.createElement('button');
+          exportButton.className = 'rounded bg-white px-3 py-1 text-xs font-semibold';
+          exportButton.textContent = 'Ekspor JSON';
+          exportButton.onclick = () => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(
+              new Blob([PosRuntime.exportSyncBackup()], { type: 'application/json' }),
+            );
+            link.download = `fastq-sync-issues-${Date.now()}.json`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+          };
+          issuePanel.append(exportButton);
+        } else {
+          issuePanel.classList.add('hidden');
+          issuePanel.dataset.open = 'false';
+          issueButton?.setAttribute('aria-expanded', 'false');
+        }
         if (!data?.authenticated) return;
         products = data.products || [];
         categories = [...new Set(products.map((p) => p.category || 'Lainnya'))];
@@ -5826,58 +6208,60 @@
         if (userLabel) userLabel.textContent = data.currentUser || data.role;
         const roleLabel = document.getElementById('roleLabel');
         if (roleLabel) roleLabel.textContent = data.role;
-        transactions = (data.sales || []).map((s) => ({
-          saleId: s.id,
-          id: s.number || s.id,
-          at: s.at,
-          time: new Date(s.at).toLocaleString('id-ID'),
-          cashier: s.cashier || '',
-          method: (s.payments || []).map((p) => p.method).join(' + '),
-          status: s.status === 'Dikembalikan' ? 'Refund' : s.status,
-          total: Number(s.total) || 0,
-          subtotal: Number(s.subtotal) || 0,
-          discount: Number(s.discount) || 0,
-          itemDiscount:
-            Number(s.itemDiscount) ||
-            (s.items || []).reduce(
-              (sum, item) =>
-                sum +
-                Number(
-                  item.discountAmount ??
-                    (item.discount?.kind === 'percent'
-                      ? Math.round((item.price * item.qty * item.discount.value) / 100)
-                      : item.discount?.value || 0),
-                ),
-              0,
-            ),
-          transactionDiscount:
-            Number(s.transactionDiscount) ||
-            Math.max(
-              0,
-              Number(s.discount || 0) -
-                (s.items || []).reduce(
-                  (sum, item) =>
-                    sum +
-                    Number(
-                      item.discountAmount ??
-                        (item.discount?.kind === 'percent'
-                          ? Math.round((item.price * item.qty * item.discount.value) / 100)
-                          : item.discount?.value || 0),
-                    ),
-                  0,
-                ),
-            ),
-          tax: Number(s.tax) || 0,
-          service: Number(s.service) || 0,
-          outstanding: Number(s.outstanding) || 0,
-          customerName: s.customerName || s.customer?.name || 'Umum',
-          shiftId: s.shiftId || '',
-          payments: s.payments || [],
-          refunds: s.refunds || [],
-          refundedAmount: Number(s.refundedAmount) || 0,
-          voidReason: s.voidReason || '',
-          items: s.items || [],
-        }));
+        transactions = (data.sales || [])
+          .map((s) => ({
+            saleId: s.id,
+            id: s.number || s.id,
+            at: s.at,
+            time: new Date(s.at).toLocaleString('id-ID'),
+            cashier: s.cashier || '',
+            method: (s.payments || []).map((p) => p.method).join(' + '),
+            status: s.status === 'Dikembalikan' ? 'Refund' : s.status,
+            total: Number(s.total) || 0,
+            subtotal: Number(s.subtotal) || 0,
+            discount: Number(s.discount) || 0,
+            itemDiscount:
+              Number(s.itemDiscount) ||
+              (s.items || []).reduce(
+                (sum, item) =>
+                  sum +
+                  Number(
+                    item.discountAmount ??
+                      (item.discount?.kind === 'percent'
+                        ? Math.round((item.price * item.qty * item.discount.value) / 100)
+                        : item.discount?.value || 0),
+                  ),
+                0,
+              ),
+            transactionDiscount:
+              Number(s.transactionDiscount) ||
+              Math.max(
+                0,
+                Number(s.discount || 0) -
+                  (s.items || []).reduce(
+                    (sum, item) =>
+                      sum +
+                      Number(
+                        item.discountAmount ??
+                          (item.discount?.kind === 'percent'
+                            ? Math.round((item.price * item.qty * item.discount.value) / 100)
+                            : item.discount?.value || 0),
+                      ),
+                    0,
+                  ),
+              ),
+            tax: Number(s.tax) || 0,
+            service: Number(s.service) || 0,
+            outstanding: Number(s.outstanding) || 0,
+            customerName: s.customerName || s.customer?.name || 'Umum',
+            shiftId: s.shiftId || '',
+            payments: s.payments || [],
+            refunds: s.refunds || [],
+            refundedAmount: Number(s.refundedAmount) || 0,
+            voidReason: s.voidReason || '',
+            items: s.items || [],
+          }))
+          .sort((a, b) => new Date(b.at || b.time) - new Date(a.at || a.time));
         const sold30 = new Map(),
           since = Date.now() - 30 * 86400000;
         transactions
@@ -6198,9 +6582,11 @@
         const caret = input.selectionStart ?? raw.length;
         const digitsBeforeCaret = raw.slice(0, caret).replace(/[^\d]/g, '').length;
         const hasDecimal = raw.includes(',');
+        const negative = raw.trim().startsWith('-');
         const parts = raw.replace(/[^\d,]/g, '').split(',');
         const integer = (parts.shift() || '').replace(/^0+(?=\d)/, '');
         const formatted =
+          (negative ? '-' : '') +
           integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.') +
           (hasDecimal ? ',' + (parts.join('') || '') : '');
         input.value = formatted;
@@ -6225,6 +6611,12 @@
       // --- INIT ---
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+          const confirmDialog = document.getElementById('posConfirmDialog');
+          if (confirmDialog && !confirmDialog.classList.contains('hidden')) {
+            e.preventDefault();
+            resolvePosConfirm(false);
+            return;
+          }
           closeScanner();
           closeAllCustomDropdowns();
           document
@@ -6431,8 +6823,10 @@
               });
           }, 1000);
           setInterval(() => {
-            if (PosRuntime.getStateSnapshot().authenticated) void PosRuntime.synchronize();
-            else showPosLogin('Sesi berakhir. Masuk kembali untuk melanjutkan.');
+            if (PosRuntime.getStateSnapshot().authenticated) {
+              void PosRuntime.synchronize();
+              if (currentPage === 'laporan') void PosRuntime.refreshSalesHistory();
+            } else showPosLogin('Sesi berakhir. Masuk kembali untuk melanjutkan.');
           }, 15000);
         } catch (error) {
           showPosLoadError(error);

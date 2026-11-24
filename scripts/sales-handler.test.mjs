@@ -32,7 +32,7 @@ function fixture(role = 'Kasir') {
               service_rupiah: '0',
               total_rupiah: '24000',
               occurred_at: date,
-              metadata: { outstanding: 0 },
+              metadata: { outstanding: 0, stock_conflict: true },
             },
           ],
         };
@@ -98,6 +98,7 @@ test('sales history returns transaction item, payment, refund, and discount deta
   await f.request(`?id=${saleId}`);
   assert.equal(f.response.status, 200);
   const sale = f.response.value.sales[0];
+  assert.equal(sale.stockConflict, true);
   assert.equal(sale.itemDiscount, 1000);
   assert.equal(sale.transactionDiscount, 0);
   assert.equal(sale.items[0].cost, 4000);

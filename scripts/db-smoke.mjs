@@ -49,7 +49,7 @@ try {
   const fixture = await pool.query(
     `SELECT p.id,p.name,p.sku,p.price_rupiah::text,p.cost_rupiah::text,b.quantity::text AS quantity
      FROM products p JOIN stock_balances b ON b.product_id=p.id AND b.outlet_id=p.outlet_id AND b.variant_id IS NULL
-     WHERE p.outlet_id=$1 AND p.deleted_at IS NULL AND b.quantity>=1 AND p.price_rupiah>=2
+     WHERE p.outlet_id=$1 AND p.deleted_at IS NULL AND b.quantity>=5 AND p.price_rupiah>=2
        AND NOT EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id=p.id AND COALESCE((v.metadata->>'retired')::boolean,FALSE)=FALSE)
      ORDER BY p.id LIMIT 1`,
     [actor.outlet_id],
@@ -95,6 +95,8 @@ try {
   const discountApprovalPaymentId = randomUUID();
   const attendanceId = randomUUID(),
     deviceId = randomUUID();
+  const transferDestinationId = randomUUID();
+  const transferId = randomUUID();
   const at = new Date().toISOString();
   const workDate = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const saleNumber = `DB-SMOKE-${saleId}`;
@@ -431,6 +433,22 @@ try {
       },
     },
   );
+  const transferEvent = {
+    id: randomUUID(),
+    type: 'transfer.upsert',
+    outletId: actor.outlet_id,
+    at,
+    payload: {
+      id: transferId,
+      productId: product.id,
+      variantId: null,
+      from: actor.outlet_id,
+      to: transferDestinationId,
+      quantity: 1,
+      note: 'DB smoke transfer',
+      at,
+    },
+  };
   const allEvents = [
     ...events,
     {
@@ -447,6 +465,7 @@ try {
       at,
       payload: { id: discountApprovalRequestId, approvalStatus: 'approved' },
     },
+    transferEvent,
   ];
   const approvalEvents = allEvents.slice(events.length);
   let rolledBack = false;
@@ -479,6 +498,11 @@ try {
     },
     release() {},
   };
+  await handlerClient.query('BEGIN');
+  await handlerClient.query('INSERT INTO outlets(id,name) VALUES($1,$2)', [
+    transferDestinationId,
+    'DB smoke destination',
+  ]);
   const handler = createSyncHandler({
     pool: handlerPool,
     activeSession: async (req) => req.smokeActor,
@@ -500,8 +524,8 @@ try {
     {
       method: 'POST',
       headers: {},
-      smokeActor: ownerActor,
-      smokeBody: { deviceId, cursor: 0, events: approvalEvents },
+      smokeActor: { ...ownerActor, role: 'Admin' },
+      smokeBody: { deviceId, cursor: 0, bootstrap: true, events: approvalEvents },
     },
     {},
     new URL('http://localhost/api/sync'),
@@ -516,7 +540,9 @@ try {
        (SELECT count(*) FROM payments WHERE id=ANY($8::uuid[]))::int AS receivable_payments_saved,
        (SELECT metadata->>'outstanding' FROM sales WHERE id=$9) AS receivable_outstanding,
        (SELECT status FROM sales WHERE id=$9) AS receivable_status,
-       (SELECT quantity::text FROM stock_balances WHERE outlet_id=$6 AND product_id=$7 AND variant_id IS NULL) AS stock_after`,
+       (SELECT quantity::text FROM stock_balances WHERE outlet_id=$6 AND product_id=$7 AND variant_id IS NULL) AS stock_after,
+       (SELECT quantity::text FROM stock_balances WHERE outlet_id=$10 AND product_id=$7 AND variant_id IS NULL) AS destination_stock,
+       (SELECT count(*) FROM stock_transfers WHERE id=$11)::int AS transfer_count`,
     [
       cashMovementId,
       discountRequestEventId,
@@ -527,6 +553,8 @@ try {
       product.id,
       [receivableSourcePaymentId, receivableSettlementPaymentId],
       receivableSaleId,
+      transferDestinationId,
+      transferId,
     ],
   );
   const effects = applied.rows[0];
@@ -542,8 +570,10 @@ try {
     Number(effects.receivable_outstanding) !== 0 ||
     effects.receivable_status !== 'Lunas' ||
     effects.sales_saved !== 4 ||
-    Number(effects.stock_after) !== Number(product.quantity) - 4 ||
-    Number(syncedStock?.quantity) !== Number(product.quantity) - 4
+    Number(effects.stock_after) !== Number(product.quantity) - 5 ||
+    Number(syncedStock?.quantity) !== Number(product.quantity) - 4 ||
+    Number(effects.destination_stock) !== 1 ||
+    effects.transfer_count !== 1
   ) {
     throw new Error(
       `Smoke test tidak menerapkan efek transaksi yang diharapkan: ${JSON.stringify(effects)}`,
@@ -553,8 +583,8 @@ try {
     {
       method: 'POST',
       headers: {},
-      smokeActor: ownerActor,
-      smokeBody: { deviceId, cursor: 0, events: [] },
+      smokeActor: { ...ownerActor, role: 'Admin' },
+      smokeBody: { deviceId, cursor: 0, bootstrap: true, events: [transferEvent] },
     },
     {},
     new URL('http://localhost/api/sync'),
@@ -577,7 +607,10 @@ try {
        (SELECT count(*) FROM shifts WHERE id=$14)::int AS test_shifts,
        (SELECT count(*) FROM sales WHERE id=ANY($15::uuid[]))::int AS discount_sales,
        (SELECT count(*) FROM payments WHERE id=ANY($16::uuid[]))::int AS discount_payments,
-       (SELECT count(*) FROM sync_events WHERE event_id=ANY($17::uuid[]) AND event_type='discount.request' AND payload->>'id'=ANY($18::text[]))::int AS discount_requests`,
+       (SELECT count(*) FROM sync_events WHERE event_id=ANY($17::uuid[]) AND event_type='discount.request' AND payload->>'id'=ANY($18::text[]))::int AS discount_requests,
+       (SELECT count(*) FROM stock_transfers WHERE id=$19)::int AS test_transfers,
+       (SELECT count(*) FROM stock_balances WHERE outlet_id=$20 AND product_id=$9)::int AS destination_stock,
+       (SELECT count(*) FROM outlets WHERE id=$20)::int AS destination_outlet`,
     [
       deviceId,
       allEvents.map((event) => event.id),
@@ -597,6 +630,8 @@ try {
       [discountPaymentId, discountApprovalPaymentId],
       [discountRequestEventId, discountApprovalRequestEventId],
       [discountRequestId, discountApprovalRequestId],
+      transferId,
+      transferDestinationId,
     ],
   );
   const counts = residue.rows[0];
@@ -629,7 +664,15 @@ try {
     approvalResponse.body?.accepted?.length !== approvalEvents.length ||
     !approvalEvents.every((event) => approvalResponse.body.accepted.includes(event.id)) ||
     rollbackResponse?.status !== 200 ||
-    rollbackResponse.body?.accepted?.length !== 0 ||
+    rollbackResponse.body?.accepted?.length !== 1 ||
+    Number(
+      rollbackResponse.body?.stockBalances?.find(
+        (balance) => balance.productId === product.id && !balance.variantId,
+      )?.quantity,
+    ) !==
+      Number(product.quantity) - 5 ||
+    rollbackResponse.body?.transfers?.filter((transfer) => transfer.id === transferId).length !==
+      1 ||
     pullResponse?.status !== 200 ||
     !Array.isArray(pullResponse.body?.events) ||
     !Number.isSafeInteger(pullResponse.body?.cursor) ||
@@ -650,14 +693,17 @@ try {
     counts.cash_movements ||
     counts.test_shifts ||
     counts.discount_sales ||
-    counts.discount_requests
+    counts.discount_requests ||
+    counts.test_transfers ||
+    counts.destination_stock ||
+    counts.destination_outlet
   ) {
     throw new Error(
       `Smoke test gagal: status=${response?.status ?? 'none'}, rollback=${rolledBack}, residu=${JSON.stringify(counts)}`,
     );
   }
   console.log(
-    'Database transaction smoke: cashier and owner shift/cash/discount approvals, audit, attendance, sale retry, partial-to-full receivable settlement, discount cancel, and stock events accepted; all test rows rolled back and the original stock balance verified unchanged.',
+    'Database transaction smoke: cashier/owner sync flows, offline sale retry, receivable settlement, approvals, cross-outlet stock transfer idempotency, and stock events passed; all test rows rolled back and original balances verified unchanged.',
   );
 } finally {
   if (heldClient) {

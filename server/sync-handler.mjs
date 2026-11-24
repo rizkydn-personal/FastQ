@@ -96,6 +96,10 @@ export function createSyncHandler({
       body.cursor < 0 ||
       !Array.isArray(body.events) ||
       body.events.length > 100 ||
+      (body.bootstrapOffset != null &&
+        (!Number.isSafeInteger(body.bootstrapOffset) ||
+          body.bootstrapOffset < 0 ||
+          body.bootstrapOffset > 1_000_000)) ||
       (body.bootstrap != null && typeof body.bootstrap !== 'boolean') ||
       (body.activeShiftId != null && !isUuid(body.activeShiftId))
     )
@@ -105,6 +109,8 @@ export function createSyncHandler({
     const roleEvents = roleEventTypes[actor.role] || new Set();
     const client = await pool.connect();
     const accepted = [];
+    const rejected = [];
+    const stockConflicts = [];
     let remote;
     let stockBalances;
     let transfers;
@@ -112,6 +118,7 @@ export function createSyncHandler({
     let bootstrapProducts = [];
     let cursor;
     let needsBootstrap = false;
+    let bootstrapTruncated = false;
     try {
       await client.query('BEGIN');
       await client.query("SELECT pg_advisory_xact_lock_shared(hashtext('fastq-sync-retention'))");
@@ -146,213 +153,245 @@ export function createSyncHandler({
       const batchEventIds = new Set();
       const scopeValidationBudget = { inspectedObjects: 0, entityIds: 0 };
       for (const event of body.events) {
-        const validTimestamp =
-          event?.at == null ||
-          (typeof event.at === 'string' &&
-            event.at.length <= 40 &&
-            Number.isFinite(Date.parse(event.at)));
-        if (
-          !event ||
-          typeof event !== 'object' ||
-          Array.isArray(event) ||
-          !isUuid(event.id) ||
-          typeof event.type !== 'string' ||
-          !event.type ||
-          !event.payload ||
-          typeof event.payload !== 'object' ||
-          Array.isArray(event.payload) ||
-          !validTimestamp
-        )
-          throw Object.assign(new Error('Format event tidak valid.'), { status: 400 });
-        if (batchEventIds.has(event.id))
-          throw Object.assign(new Error('ID event duplikat dalam satu batch sinkronisasi.'), {
-            status: 400,
-          });
-        batchEventIds.add(event.id);
-        if (!roleEvents.has(event.type))
-          throw Object.assign(
-            new Error(`Role ${actor.role} tidak dapat mengirim perubahan ${event.type}.`),
-            { status: 403 },
-          );
-        if (
-          event.type === 'outlet.upsert' &&
-          (actor.role !== 'Admin' || event.payload.id !== scope)
-        )
-          throw Object.assign(
-            new Error(
-              'Hanya Pemilik yang dapat membuat toko; Admin hanya dapat menyinkronkan toko aktif.',
-            ),
-            { status: 403 },
-          );
-        if (
-          event.type === 'cash.upsert' &&
-          (!['in', 'out'].includes(event.payload.type) ||
-            (actor.role === 'Pemilik' && event.payload.type !== 'out'))
-        )
-          throw Object.assign(
-            new Error('Jenis pergerakan kas tidak diizinkan untuk role akun ini.'),
-            { status: 403 },
-          );
-        if (
-          event.type === 'stock.delta' &&
-          actor.role === 'Kasir' &&
-          Number(event.payload.delta) >= 0
-        )
-          throw Object.assign(
-            new Error('Kasir hanya dapat menyinkronkan pengurangan stok dari transaksi.'),
-            { status: 403 },
-          );
-        if (
-          event.type === 'sale.upsert' &&
-          actor.role === 'Kasir' &&
-          (['Dikembalikan', 'Void'].includes(event.payload.status) ||
-            event.payload.refunds?.length ||
-            event.payload.voidReason ||
-            event.payload.voidAt)
-        )
-          throw Object.assign(
-            new Error('Kasir tidak dapat membatalkan atau me-refund transaksi.'),
-            { status: 403 },
-          );
-        if (scope) {
-          const deny = () => {
+        await client.query('SAVEPOINT sync_event');
+        try {
+          let saleConflict = null;
+          const validTimestamp =
+            event?.at == null ||
+            (typeof event.at === 'string' &&
+              event.at.length <= 40 &&
+              Number.isFinite(Date.parse(event.at)));
+          if (
+            !event ||
+            typeof event !== 'object' ||
+            Array.isArray(event) ||
+            !isUuid(event.id) ||
+            typeof event.type !== 'string' ||
+            !event.type ||
+            !event.payload ||
+            typeof event.payload !== 'object' ||
+            Array.isArray(event.payload) ||
+            !validTimestamp
+          )
+            throw Object.assign(new Error('Format event tidak valid.'), { status: 400 });
+          if (batchEventIds.has(event.id))
+            throw Object.assign(new Error('ID event duplikat dalam satu batch sinkronisasi.'), {
+              status: 400,
+            });
+          batchEventIds.add(event.id);
+          if (!roleEvents.has(event.type))
+            throw Object.assign(
+              new Error(`Role ${actor.role} tidak dapat mengirim perubahan ${event.type}.`),
+              { status: 403 },
+            );
+          if (
+            event.type === 'outlet.upsert' &&
+            (actor.role !== 'Admin' || event.payload.id !== scope)
+          )
             throw Object.assign(
               new Error(
-                `Event ${event.type} (${event.id}) memuat data di luar toko akun. Data tetap disimpan di perangkat; gunakan akun toko yang sesuai.`,
+                'Hanya Pemilik yang dapat membuat toko; Admin hanya dapat menyinkronkan toko aktif.',
               ),
               { status: 403 },
             );
-          };
-          if (event.outletId !== scope) deny();
-          if (event.type === 'outlet.upsert' && event.payload.id !== scope) deny();
-          const ids = collectScopedEntityIds(event, {
-            scope,
-            isUuid,
-            budget: scopeValidationBudget,
-          });
-          const foreign = await client.query(
-            `SELECT id FROM (
+          if (
+            event.type === 'cash.upsert' &&
+            (!['in', 'out'].includes(event.payload.type) ||
+              (actor.role === 'Pemilik' && event.payload.type !== 'out'))
+          )
+            throw Object.assign(
+              new Error('Jenis pergerakan kas tidak diizinkan untuk role akun ini.'),
+              { status: 403 },
+            );
+          if (
+            event.type === 'stock.delta' &&
+            actor.role === 'Kasir' &&
+            Number(event.payload.delta) >= 0
+          )
+            throw Object.assign(
+              new Error('Kasir hanya dapat menyinkronkan pengurangan stok dari transaksi.'),
+              { status: 403 },
+            );
+          if (
+            event.type === 'sale.upsert' &&
+            actor.role === 'Kasir' &&
+            (['Dikembalikan', 'Void'].includes(event.payload.status) ||
+              event.payload.refunds?.length ||
+              event.payload.voidReason ||
+              event.payload.voidAt)
+          )
+            throw Object.assign(
+              new Error('Kasir tidak dapat membatalkan atau me-refund transaksi.'),
+              { status: 403 },
+            );
+          if (scope) {
+            const deny = () => {
+              throw Object.assign(
+                new Error(
+                  `Event ${event.type} (${event.id}) memuat data di luar toko akun. Data tetap disimpan di perangkat; gunakan akun toko yang sesuai.`,
+                ),
+                { status: 403 },
+              );
+            };
+            if (event.outletId !== scope) deny();
+            if (event.type === 'outlet.upsert' && event.payload.id !== scope) deny();
+            const ids = collectScopedEntityIds(event, {
+              scope,
+              isUuid,
+              budget: scopeValidationBudget,
+            });
+            const foreign = await client.query(
+              `SELECT id FROM (
           SELECT id,outlet_id FROM products UNION ALL SELECT id,outlet_id FROM customers
           UNION ALL SELECT id,outlet_id FROM shifts UNION ALL SELECT id,outlet_id FROM sales
           UNION ALL SELECT movement.id,shift.outlet_id FROM cash_movements movement JOIN shifts shift ON shift.id=movement.shift_id
           UNION ALL SELECT id,outlet_id FROM attendance
           UNION ALL SELECT v.id,p.outlet_id FROM product_variants v JOIN products p ON p.id=v.product_id
         ) entities WHERE id=ANY($1::uuid[]) AND outlet_id IS DISTINCT FROM $2::uuid LIMIT 1`,
-            [[...ids], scope],
-          );
-          if (foreign.rowCount) deny();
-        }
-        const inserted = await client.query(
-          `INSERT INTO sync_events(event_id,device_id,outlet_id,event_type,payload,occurred_at)
-         VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(device_id,event_id) DO NOTHING RETURNING server_cursor`,
-          [
-            event.id,
-            body.deviceId,
-            event.outletId || null,
-            event.type,
-            event.payload,
-            event.at || new Date().toISOString(),
-          ],
-        );
-        if (!inserted.rowCount) {
-          const existing = await client.query(
-            `SELECT event_type,outlet_id,payload,occurred_at FROM sync_events WHERE device_id=$1 AND event_id=$2`,
-            [body.deviceId, event.id],
-          );
-          if (!existing.rowCount || !matchesStoredSyncEvent(existing.rows[0], event)) {
-            throw Object.assign(
-              new Error('ID event sudah pernah dipakai untuk perubahan yang berbeda.'),
-              {
-                status: 409,
-                code: 'SYNC_EVENT_ID_CONFLICT',
-                conflict: {
-                  type: 'sync-event-id',
-                  eventId: event.id,
-                  eventType: existing.rows[0]?.event_type || event.type,
-                  outletId: existing.rows[0]?.outlet_id || event.outletId || null,
-                  occurredAt: existing.rows[0]?.occurred_at || null,
-                  storedEvent: existing.rowCount
-                    ? {
-                        event_type: existing.rows[0].event_type,
-                        outlet_id: existing.rows[0].outlet_id,
-                        occurred_at: existing.rows[0].occurred_at,
-                        payload: existing.rows[0].payload,
-                      }
-                    : null,
-                },
-              },
+              [[...ids], scope],
             );
+            if (foreign.rowCount) deny();
+          }
+          const inserted = await client.query(
+            `INSERT INTO sync_events(event_id,device_id,outlet_id,event_type,payload,occurred_at)
+         VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(device_id,event_id) DO NOTHING RETURNING server_cursor`,
+            [
+              event.id,
+              body.deviceId,
+              event.outletId || null,
+              event.type,
+              event.payload,
+              event.at || new Date().toISOString(),
+            ],
+          );
+          if (!inserted.rowCount) {
+            const existing = await client.query(
+              `SELECT event_type,outlet_id,payload,occurred_at FROM sync_events WHERE device_id=$1 AND event_id=$2`,
+              [body.deviceId, event.id],
+            );
+            if (!existing.rowCount || !matchesStoredSyncEvent(existing.rows[0], event)) {
+              throw Object.assign(
+                new Error('ID event sudah pernah dipakai untuk perubahan yang berbeda.'),
+                {
+                  status: 409,
+                  code: 'SYNC_EVENT_ID_CONFLICT',
+                  conflict: {
+                    type: 'sync-event-id',
+                    eventId: event.id,
+                    eventType: existing.rows[0]?.event_type || event.type,
+                    outletId: existing.rows[0]?.outlet_id || event.outletId || null,
+                    occurredAt: existing.rows[0]?.occurred_at || null,
+                    storedEvent: existing.rowCount
+                      ? {
+                          event_type: existing.rows[0].event_type,
+                          outlet_id: existing.rows[0].outlet_id,
+                          occurred_at: existing.rows[0].occurred_at,
+                          payload: existing.rows[0].payload,
+                        }
+                      : null,
+                  },
+                },
+              );
+            }
+            accepted.push(event.id);
+            if (event.type === 'sale.upsert') {
+              saleConflict = await applySaleEvent({
+                client,
+                event,
+                scope,
+                actor,
+                deviceId: body.deviceId,
+                isUuid,
+                createHash,
+              });
+            }
+            await client.query('RELEASE SAVEPOINT sync_event');
+            if (saleConflict?.stockConflict) stockConflicts.push(saleConflict);
+            continue;
           }
           accepted.push(event.id);
-          continue;
-        }
-        accepted.push(event.id);
-        if (
-          [
-            'outlet.upsert',
-            'product.upsert',
-            'product.favorite',
-            'product.delete',
-            'customer.upsert',
-          ].includes(event.type)
-        ) {
-          await applyCatalogEvent({ client, event, scope, deviceId: body.deviceId, isUuid });
-        } else if (event.type === 'shift.upsert') {
-          await applyShiftEvent({ client, event, scope, actor, deviceId: body.deviceId, isUuid });
-        } else if (event.type === 'sale.upsert') {
-          await applySaleEvent({
-            client,
-            event,
-            scope,
-            actor,
-            deviceId: body.deviceId,
-            isUuid,
-            createHash,
-          });
-        } else if (event.type === 'cash.upsert' || event.type === 'cash.approval') {
-          await applyCashEvent({ client, event, scope, actor, deviceId: body.deviceId, isUuid });
-        } else if (
-          event.type === 'discount.request' ||
-          event.type === 'discount.approval' ||
-          event.type === 'discount.cancel'
-        ) {
-          await applyDiscountEvent({
-            client,
-            event,
-            scope,
-            actor,
-            deviceId: body.deviceId,
-            isUuid,
-          });
-        } else if (event.type === 'attendance.upsert') {
-          await applyAttendanceEvent({
-            client,
-            event,
-            scope,
-            actor,
-            deviceId: body.deviceId,
-            isUuid,
-          });
-        } else if (event.type === 'receivable.payment') {
-          await applyReceivableEvent({
-            client,
-            event,
-            scope,
-            actor,
-            deviceId: body.deviceId,
-            isUuid,
-          });
-        } else if (event.type === 'transfer.upsert' || event.type === 'audit.append') {
-          await applyTransferAndAuditEvent({
-            client,
-            event,
-            scope,
-            actor,
-            deviceId: body.deviceId,
-            isUuid,
-          });
-        } else if (event.type === 'stock.delta' || event.type === 'stock.reconcile') {
-          await applyStockEvent({ client, event, scope, actor, deviceId: body.deviceId, isUuid });
+          if (
+            [
+              'outlet.upsert',
+              'product.upsert',
+              'product.favorite',
+              'product.delete',
+              'customer.upsert',
+            ].includes(event.type)
+          ) {
+            await applyCatalogEvent({ client, event, scope, deviceId: body.deviceId, isUuid });
+          } else if (event.type === 'shift.upsert') {
+            await applyShiftEvent({ client, event, scope, actor, deviceId: body.deviceId, isUuid });
+          } else if (event.type === 'sale.upsert') {
+            saleConflict = await applySaleEvent({
+              client,
+              event,
+              scope,
+              actor,
+              deviceId: body.deviceId,
+              isUuid,
+              createHash,
+            });
+          } else if (event.type === 'cash.upsert' || event.type === 'cash.approval') {
+            await applyCashEvent({ client, event, scope, actor, deviceId: body.deviceId, isUuid });
+          } else if (
+            event.type === 'discount.request' ||
+            event.type === 'discount.approval' ||
+            event.type === 'discount.cancel'
+          ) {
+            await applyDiscountEvent({
+              client,
+              event,
+              scope,
+              actor,
+              deviceId: body.deviceId,
+              isUuid,
+            });
+          } else if (event.type === 'attendance.upsert') {
+            await applyAttendanceEvent({
+              client,
+              event,
+              scope,
+              actor,
+              deviceId: body.deviceId,
+              isUuid,
+            });
+          } else if (event.type === 'receivable.payment') {
+            await applyReceivableEvent({
+              client,
+              event,
+              scope,
+              actor,
+              deviceId: body.deviceId,
+              isUuid,
+            });
+          } else if (event.type === 'transfer.upsert' || event.type === 'audit.append') {
+            await applyTransferAndAuditEvent({
+              client,
+              event,
+              scope,
+              actor,
+              deviceId: body.deviceId,
+              isUuid,
+            });
+          } else if (event.type === 'stock.delta' || event.type === 'stock.reconcile') {
+            await applyStockEvent({ client, event, scope, actor, deviceId: body.deviceId, isUuid });
+          }
+          await client.query('RELEASE SAVEPOINT sync_event');
+          if (saleConflict?.stockConflict) stockConflicts.push(saleConflict);
+        } catch (error) {
+          await client.query('ROLLBACK TO SAVEPOINT sync_event');
+          await client.query('RELEASE SAVEPOINT sync_event');
+          if (event?.id) {
+            const acceptedIndex = accepted.indexOf(event.id);
+            if (acceptedIndex >= 0) accepted.splice(acceptedIndex, 1);
+            rejected.push({
+              id: event.id,
+              code: error.code || 'SYNC_EVENT_REJECTED',
+              message: error.message || 'Event ditolak.',
+              retryable: error.status === 408 || error.status === 429 || error.status >= 500,
+            });
+          }
         }
       }
       remote = needsBootstrap
@@ -362,19 +401,63 @@ export function createSyncHandler({
        FROM sync_events WHERE server_cursor>$1 AND outlet_id=$2 ORDER BY server_cursor LIMIT 1000`,
             [body.cursor, scope],
           );
-      const balances = await client.query(
-        `SELECT product_id,variant_id,quantity::text AS quantity
+      const remoteSaleIds = [
+        ...new Set(
+          remote.rows
+            .filter(
+              (event) =>
+                event.device_id !== body.deviceId &&
+                event.event_type === 'sale.upsert' &&
+                isUuid(event.payload?.id),
+            )
+            .map((event) => event.payload.id),
+        ),
+      ];
+      if (remoteSaleIds.length) {
+        const conflictBalances = await client.query(
+          `SELECT DISTINCT sale.id AS sale_id,balance.product_id,balance.variant_id,
+                  balance.quantity::text AS quantity
+           FROM sales sale
+           JOIN sale_items item ON item.sale_id=sale.id
+           JOIN stock_balances balance
+             ON balance.outlet_id=sale.outlet_id AND balance.product_id=item.product_id
+           WHERE sale.id=ANY($1::uuid[]) AND sale.outlet_id=$2
+             AND COALESCE((sale.metadata->>'stock_conflict')::boolean,FALSE)=TRUE
+           ORDER BY sale.id,balance.product_id,balance.variant_id NULLS FIRST`,
+          [remoteSaleIds, scope],
+        );
+        const balancesBySale = new Map();
+        for (const balance of conflictBalances.rows) {
+          const balances = balancesBySale.get(balance.sale_id) || [];
+          balances.push({
+            outletId: scope,
+            productId: balance.product_id,
+            variantId: balance.variant_id,
+            quantity: Number(balance.quantity),
+          });
+          balancesBySale.set(balance.sale_id, balances);
+        }
+        for (const [saleId, balances] of balancesBySale) {
+          if (!stockConflicts.some((conflict) => conflict.saleId === saleId))
+            stockConflicts.push({ saleId, stockConflict: true, stockBalances: balances });
+        }
+      }
+      const balances = needsBootstrap
+        ? await client.query(
+            `SELECT product_id,variant_id,quantity::text AS quantity
        FROM stock_balances WHERE outlet_id=$1 ORDER BY product_id,variant_id NULLS FIRST`,
-        [scope],
-      );
+            [scope],
+          )
+        : { rows: [] };
       stockBalances = balances.rows.map((balance) => ({
         outletId: scope,
         productId: balance.product_id,
         variantId: balance.variant_id,
         quantity: Number(balance.quantity),
       }));
-      const transferRows = await client.query(
-        `SELECT transfer.id,transfer.product_id AS "productId",
+      const transferRows = needsBootstrap
+        ? await client.query(
+            `SELECT transfer.id,transfer.product_id AS "productId",
                 transfer.variant_id AS "variantId",transfer.from_outlet_id AS "from",
                 transfer.to_outlet_id AS "to",transfer.quantity::text AS quantity,
                 transfer.note,transfer.occurred_at AS at,product.name AS "productName"
@@ -382,15 +465,17 @@ export function createSyncHandler({
          LEFT JOIN products product ON product.id=transfer.product_id
          WHERE transfer.from_outlet_id=$1 OR transfer.to_outlet_id=$1
          ORDER BY transfer.occurred_at DESC,transfer.id DESC LIMIT 500`,
-        [scope],
-      );
+            [scope],
+          )
+        : { rows: [] };
       transfers = transferRows.rows.map((transfer) => ({
         ...transfer,
         quantity: Number(transfer.quantity),
         at: new Date(transfer.at).toISOString(),
       }));
-      const outletRows = await client.query(
-        `SELECT outlet.id,outlet.name,outlet.code
+      const outletRows = needsBootstrap
+        ? await client.query(
+            `SELECT outlet.id,outlet.name,outlet.code
          FROM outlets outlet
          WHERE outlet.id=$1 OR outlet.id IN (
            SELECT transfer.from_outlet_id FROM stock_transfers transfer
@@ -400,24 +485,32 @@ export function createSyncHandler({
            WHERE transfer.from_outlet_id=$1 OR transfer.to_outlet_id=$1
          )
          ORDER BY outlet.name,outlet.id`,
-        [scope],
-      );
+            [scope],
+          )
+        : { rows: [] };
       outlets = outletRows.rows;
       if (needsBootstrap) {
+        const catalogCount = await client.query(
+          'SELECT count(*)::int AS total FROM products WHERE outlet_id=$1 AND deleted_at IS NULL',
+          [scope],
+        );
+        const bootstrapOffset = body.bootstrapOffset || 0;
         const products = await client.query(
           `SELECT p.id,p.sku,p.barcode,p.name,p.unit,p.price_rupiah::text AS price,
                     p.cost_rupiah::text AS cost,p.min_stock::text AS min_stock,p.metadata,
                     c.name AS category
              FROM products p LEFT JOIN categories c ON c.id=p.category_id
-             WHERE p.outlet_id=$1 AND p.deleted_at IS NULL ORDER BY p.name LIMIT 5000`,
-          [scope],
+             WHERE p.outlet_id=$1 AND p.deleted_at IS NULL ORDER BY p.name,p.id LIMIT 5000 OFFSET $2`,
+          [scope, bootstrapOffset],
         );
+        bootstrapTruncated =
+          Number(catalogCount.rows[0]?.total || 0) > bootstrapOffset + products.rows.length;
         const variants = await client.query(
           `SELECT v.id,v.product_id,v.sku,v.barcode,v.name,v.price_rupiah::text AS price,
                     v.cost_rupiah::text AS cost,v.metadata
              FROM product_variants v JOIN products p ON p.id=v.product_id
-             WHERE p.outlet_id=$1 AND p.deleted_at IS NULL ORDER BY v.name`,
-          [scope],
+             WHERE p.outlet_id=$1 AND p.deleted_at IS NULL AND p.id=ANY($2::uuid[]) ORDER BY v.name`,
+          [scope, products.rows.map((product) => product.id)],
         );
         const latestCursor = await client.query(
           'SELECT COALESCE(MAX(server_cursor),0)::text AS cursor FROM sync_events WHERE outlet_id=$1',
@@ -520,12 +613,15 @@ export function createSyncHandler({
     const knownShift = known?.rows[0]?.id !== activeShift?.id ? toShift(known?.rows[0]) : null;
     return json(res, 200, {
       accepted,
+      rejected,
+      stockConflicts,
       events,
       stockBalances,
       transfers,
       outlets,
       bootstrapProducts,
       catalogBootstrapped: needsBootstrap,
+      bootstrapTruncated,
       activeShift,
       knownShift,
       cursor,

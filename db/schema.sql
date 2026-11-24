@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS stock_balances (
   outlet_id uuid NOT NULL REFERENCES outlets(id),
   product_id uuid NOT NULL REFERENCES products(id),
   variant_id uuid REFERENCES product_variants(id),
-  quantity numeric(18,3) NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+  quantity numeric(18,3) NOT NULL DEFAULT 0,
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE NULLS NOT DISTINCT(outlet_id, product_id, variant_id)
 );

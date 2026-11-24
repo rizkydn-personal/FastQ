@@ -19,7 +19,7 @@ export async function applyCatalogEvent({ client, event, scope, deviceId, isUuid
           const quantity = Number(raw);
           return (
             Number.isFinite(quantity) &&
-            quantity >= 0 &&
+            quantity > -1e15 &&
             quantity < 1e15 &&
             Math.abs(quantity * 1000 - Math.round(quantity * 1000)) <= 1e-6
           );

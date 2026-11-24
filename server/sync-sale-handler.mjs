@@ -15,13 +15,14 @@ function stockMovementId(createHash, saleId, index) {
 
 // Mengurangi stok secara atomik untuk transaksi baru (T3). Berjalan di dalam
 // transaksi sinkronisasi yang sama dengan penyimpanan transaksi, dengan baris
-// stock_balances dikunci FOR UPDATE sehingga dua perangkat tidak dapat menjual
-// stok terakhir secara bersamaan. Menolak bila stok tidak mencukupi; pergerakan
+// stock_balances dikunci FOR UPDATE. Transaksi offline yang melampaui stok tetap
+// diterima dan saldo negatif dipertahankan agar konflik terlihat. Pergerakan
 // dicatat dengan alasan yang sama seperti stock.delta klien
 // (`Penjualan <nomor>`) agar event stock.delta yang datang belakangan dikenali
 // sebagai sudah diterapkan dan tidak mengurangi stok dua kali.
 async function decrementStockForSale({ client, sale, scope, productById, createHash }) {
   const movements = [];
+  let stockConflict = false;
   for (const [index, item] of sale.items.entries()) {
     const variantId = item.variantId || null;
     await client.query(
@@ -36,19 +37,11 @@ async function decrementStockForSale({ client, sale, scope, productById, createH
     );
     const available = Number(current.rows[0]?.quantity || 0);
     const nextQuantity = available - item.qty;
-    if (nextQuantity < -0.0000001) {
-      const product = productById.get(item.productId);
-      throw Object.assign(
-        new Error(
-          `Stok ${product?.name || 'produk'} tidak mencukupi (tersedia ${available}, diminta ${item.qty}).`,
-        ),
-        { status: 409, code: 'INSUFFICIENT_STOCK' },
-      );
-    }
+    if (nextQuantity < -0.0000001) stockConflict = true;
     await client.query(
       `UPDATE stock_balances SET quantity=$4,updated_at=now()
        WHERE outlet_id=$1 AND product_id=$2 AND variant_id IS NOT DISTINCT FROM $3`,
-      [scope, item.productId, variantId, Math.max(0, nextQuantity)],
+      [scope, item.productId, variantId, nextQuantity],
     );
     movements.push({
       id: stockMovementId(createHash, sale.id, index),
@@ -89,6 +82,7 @@ async function decrementStockForSale({ client, sale, scope, productById, createH
       ],
     );
   }
+  return stockConflict;
 }
 
 export async function applySaleEvent({
@@ -197,8 +191,15 @@ export async function applySaleEvent({
   // sebelum baris transaksi ditulis. Transaksi Void/Dikembalikan tidak
   // mengurangi stok di sini (pengembalian stok void ditangani lewat
   // stock.delta `Void <nomor>` dari klien).
+  let stockConflict = !!existingSale.rows[0]?.metadata?.stock_conflict;
   if (!existingSale.rowCount && ['Lunas', 'Piutang'].includes(s.status))
-    await decrementStockForSale({ client, sale: s, scope, productById, createHash });
+    stockConflict = await decrementStockForSale({
+      client,
+      sale: s,
+      scope,
+      productById,
+      createHash,
+    });
   s.cashier = existingSale.rows[0]?.cashier_name || actor.name;
   let newPayments = s.payments;
   if (existingSale.rowCount) {
@@ -409,6 +410,7 @@ export async function applySaleEvent({
         voidReason: s.voidReason || null,
         voidAt: s.voidAt || null,
         cashier: s.cashier,
+        stock_conflict: stockConflict,
       },
     ],
   );
@@ -521,4 +523,21 @@ export async function applySaleEvent({
       await client.query('UPDATE shifts SET metadata=$2 WHERE id=$1', [s.shiftId, metadata]);
     }
   }
+  const stockBalances = stockConflict
+    ? await client.query(
+        `SELECT product_id,variant_id,quantity::text AS quantity FROM stock_balances
+         WHERE outlet_id=$1 AND product_id=ANY($2::uuid[])`,
+        [scope, productIds],
+      )
+    : { rows: [] };
+  return {
+    saleId: s.id,
+    stockConflict,
+    stockBalances: stockBalances.rows.map((balance) => ({
+      outletId: scope,
+      productId: balance.product_id,
+      variantId: balance.variant_id,
+      quantity: Number(balance.quantity),
+    })),
+  };
 }

@@ -44,6 +44,33 @@ test('scope traversal rejects empty and foreign outlet identifiers', () => {
   }
 });
 
+test('transfer scope allows a foreign destination while keeping the source scoped to the actor', () => {
+  const ids = collectScopedEntityIds(
+    {
+      type: 'transfer.upsert',
+      payload: {
+        id: '00000000-0000-4000-8000-000000000001',
+        productId: '00000000-0000-4000-8000-000000000002',
+        from: 'outlet-a',
+        to: 'outlet-b',
+      },
+    },
+    { scope: 'outlet-a', isUuid: (value) => /^[0-9a-f-]{36}$/i.test(value), budget: {} },
+  );
+  assert.deepEqual(
+    [...ids],
+    ['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002'],
+  );
+  assert.throws(
+    () =>
+      collectScopedEntityIds(
+        { type: 'transfer.upsert', payload: { from: 'outlet-b', to: 'outlet-c' } },
+        { scope: 'outlet-a', isUuid: () => false, budget: {} },
+      ),
+    /di luar toko akun/,
+  );
+});
+
 test('scope traversal enforces per-event object and entity ID limits', () => {
   const root = {};
   let cursor = root;

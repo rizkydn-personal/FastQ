@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent 
 import './dashboard.css';
 import './dashboard-utilities.generated.css';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 const PAGE_SIZE = 5;
 
 const DASHBOARD_LIST_LABELS = {
@@ -364,7 +366,7 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     let active = true;
-    fetch('/api/auth/session', { credentials: 'same-origin' })
+    fetch(`${API_BASE}/api/auth/session`, { credentials: 'include' })
       .then((res) => {
         if (active) setAuthenticated(res.ok);
       })
@@ -384,7 +386,7 @@ export default function OwnerDashboard() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(login),
@@ -420,8 +422,8 @@ export default function OwnerDashboard() {
     try {
       const query = new URLSearchParams({ days: String(days) });
       if (outlet) query.set('outletId', outlet);
-      const response = await fetch(`/api/dashboard?${query}`, {
-        credentials: 'same-origin',
+      const response = await fetch(`${API_BASE}/api/dashboard?${query}`, {
+        credentials: 'include',
         signal: controller.signal,
       });
       const body = await response.json();
@@ -464,9 +466,9 @@ export default function OwnerDashboard() {
     setSigningOut(true);
     setError('');
     try {
-      const response = await fetch('/api/auth/logout', {
+      const response = await fetch(`${API_BASE}/api/auth/logout`, {
         method: 'POST',
-        credentials: 'same-origin',
+        credentials: 'include',
       });
       if (!response.ok) throw new Error('Tidak dapat keluar dari akun. Coba lagi.');
       setAuthenticated(false);

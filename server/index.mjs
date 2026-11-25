@@ -42,6 +42,8 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 const {
   setSessionCookie,
   requireSameOrigin,
+  isAllowedOrigin,
+  corsHeaders,
   authorized,
   sessionUser,
   encryptTotpSecret,
@@ -53,6 +55,10 @@ const {
   totpEncryptionKey,
   cookieSecure: !isDevelopment,
   trustProxy: !isDevelopment,
+  allowedOrigins: String(process.env.POS_CORS_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
 });
 let pool;
 let schemaReady = false;
@@ -159,8 +165,10 @@ function securityHeaders(scriptNonce = '') {
 
 function json(res, status, value) {
   if (res.destroyed || res.writableEnded) return;
+  const cors = res.req ? corsHeaders(res.req) : {};
   res.writeHead(status, {
     ...securityHeaders(),
+    ...cors,
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
   });
@@ -318,7 +326,9 @@ async function ownerLogin(req, res) {
     }),
   ).toString('base64url');
   const token = `${payload}.${createHmac('sha256', sessionSecret).update(payload).digest('base64url')}`;
-  setSessionCookie(res, token);
+  setSessionCookie(res, token, 30 * 24 * 60 * 60, {
+    crossOrigin: isAllowedOrigin(req.headers.origin),
+  });
   return json(res, 200, {
     user: {
       id: user.id,
@@ -534,7 +544,7 @@ async function logout(req, res) {
   requireSameOrigin(req);
   const session = sessionUser(req);
   if (!session?.sid) {
-    setSessionCookie(res, '', 0);
+    setSessionCookie(res, '', 0, { crossOrigin: isAllowedOrigin(req.headers.origin) });
     return json(res, 200, { loggedOut: true, sessionRevoked: false, alreadyInactive: true });
   }
   if (!pool)
@@ -548,7 +558,7 @@ async function logout(req, res) {
     values: [session.sid, session.sub],
     query_timeout: 12000,
   });
-  setSessionCookie(res, '', 0);
+  setSessionCookie(res, '', 0, { crossOrigin: isAllowedOrigin(req.headers.origin) });
   // A missing row means the session was already expired/removed. Its token
   // cannot authenticate, so clear the cookie and finish the logout normally.
   return json(res, 200, {
@@ -736,6 +746,13 @@ const syncEvents = createSyncHandler({
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url || '/', 'http://localhost');
+    if (req.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      const cors = corsHeaders(req);
+      if (Object.keys(cors).length > 0) {
+        res.writeHead(204, { ...securityHeaders(), ...cors, 'Content-Length': '0' });
+        return res.end();
+      }
+    }
     if (url.pathname === '/api/health' || url.pathname === '/api/health/live')
       return await health(req, res, url.pathname);
     if (url.pathname.startsWith('/api/') && !(await refreshSchemaReady()))
@@ -802,7 +819,8 @@ createServer(async (req, res) => {
     if (error.status) {
       // A rejected/expired session must not leave a stale HttpOnly cookie in
       // the browser or installed app. Login failures return directly above.
-      if (error.status === 401) setSessionCookie(res, '', 0);
+      if (error.status === 401)
+        setSessionCookie(res, '', 0, { crossOrigin: isAllowedOrigin(req.headers.origin) });
       return json(res, error.status, {
         error: error.message,
         code: error.code || null,

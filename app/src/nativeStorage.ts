@@ -21,30 +21,35 @@ let database: SQLiteDBConnection | undefined;
 export async function initializeNativeStorage(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false;
 
-  const connection = new SQLiteConnection(CapacitorSQLite);
-  await connection.checkConnectionsConsistency();
-  const secretStatus = await connection.isSecretStored();
-  if (!secretStatus.result) {
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    const secret = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-    await connection.setEncryptionSecret(secret);
-  }
+  try {
+    const connection = new SQLiteConnection(CapacitorSQLite);
+    await connection.checkConnectionsConsistency();
+    const secretStatus = await connection.isSecretStored();
+    if (!secretStatus.result) {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      const secret = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+      await connection.setEncryptionSecret(secret);
+    }
 
-  const exists = await connection.isConnection(databaseName, false);
-  database = exists.result
-    ? await connection.retrieveConnection(databaseName, false)
-    : await connection.createConnection(databaseName, true, 'encryption', 1, false);
-  await database.open();
-  await database.execute(`CREATE TABLE IF NOT EXISTS pos_state (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    payload TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  )`);
-  await database.execute(`CREATE TABLE IF NOT EXISTS pos_collections (
-    key TEXT PRIMARY KEY,
-    payload TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  )`);
+    const exists = await connection.isConnection(databaseName, false);
+    database = exists.result
+      ? await connection.retrieveConnection(databaseName, false)
+      : await connection.createConnection(databaseName, true, 'secret', 1, false);
+    await database.open();
+    await database.execute(`CREATE TABLE IF NOT EXISTS pos_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`);
+    await database.execute(`CREATE TABLE IF NOT EXISTS pos_collections (
+      key TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`);
+  } catch (error) {
+    console.error('native-sqlite-init-failed', error);
+    return false;
+  }
 
   window.PosNativeStorage = {
     load: async () => {

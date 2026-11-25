@@ -10,13 +10,57 @@ const SESSION_COOKIE = 'pos_session';
 const sessionRoles = new Set(['Pemilik', 'Manajer', 'Admin', 'Kasir']);
 const sessionUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const DEFAULT_NATIVE_ORIGINS = [
+  'https://localhost',
+  'http://localhost',
+  'capacitor://localhost',
+  'ionic://localhost',
+];
+
 export function createAuthSecurity({
   apiToken = '',
   sessionSecret = '',
   totpEncryptionKey = '',
   cookieSecure = true,
   trustProxy = false,
+  allowedOrigins = [],
 } = {}) {
+  const allowedOriginSet = new Set(
+    [...DEFAULT_NATIVE_ORIGINS, ...allowedOrigins]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+      .map((value) => {
+        try {
+          return new URL(value).origin;
+        } catch {
+          return '';
+        }
+      })
+      .filter(Boolean),
+  );
+
+  function isAllowedOrigin(origin) {
+    if (!origin) return false;
+    try {
+      return allowedOriginSet.has(new URL(origin).origin);
+    } catch {
+      return false;
+    }
+  }
+
+  function corsHeaders(req) {
+    const origin = req.headers.origin;
+    if (!isAllowedOrigin(origin)) return {};
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Max-Age': '600',
+      Vary: 'Origin',
+    };
+  }
+
   function readCookie(req, name) {
     const header = req.headers.cookie || '';
     for (const pair of header.split(';')) {
@@ -31,17 +75,21 @@ export function createAuthSecurity({
     return '';
   }
 
-  function setSessionCookie(res, token, maxAgeSeconds = 30 * 24 * 60 * 60) {
+  function setSessionCookie(res, token, maxAgeSeconds = 30 * 24 * 60 * 60, options = {}) {
+    const crossOrigin = options.crossOrigin === true;
+    const sameSite = crossOrigin ? 'None' : 'Lax';
+    const secure = crossOrigin ? true : cookieSecure;
     res.setHeader(
       'Set-Cookie',
-      `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${cookieSecure ? '; Secure' : ''}`,
+      `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAgeSeconds}${secure ? '; Secure' : ''}`,
     );
   }
 
   function requireSameOrigin(req) {
+    const origin = req.headers.origin;
+    if (origin && isAllowedOrigin(origin)) return;
     if (req.headers['sec-fetch-site'] === 'cross-site')
       throw Object.assign(new Error('Permintaan lintas situs ditolak.'), { status: 403 });
-    const origin = req.headers.origin;
     if (!origin) return;
     try {
       const forwardedHost = trustProxy
@@ -168,6 +216,8 @@ export function createAuthSecurity({
     readCookie,
     setSessionCookie,
     requireSameOrigin,
+    isAllowedOrigin,
+    corsHeaders,
     authorized,
     sessionUser,
     encryptTotpSecret,

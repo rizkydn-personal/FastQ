@@ -26,6 +26,15 @@ try {
     "DELETE FROM daily_backups WHERE backup_date < CURRENT_DATE - INTERVAL '90 days'",
   );
   console.log(`${result.rowCount} backup aplikasi berusia lebih dari 90 hari dihapus.`);
+  const orphanImages = await pool.query(
+    `DELETE FROM product_images image
+     WHERE image.created_at < now() - INTERVAL '7 days'
+       AND NOT EXISTS (
+         SELECT 1 FROM products product
+         WHERE product.metadata->>'imageId'=image.id::text
+       )`,
+  );
+  console.log(`${orphanImages.rowCount} gambar produk yatim lebih dari 7 hari dihapus.`);
   console.log(
     'Event sinkronisasi dipertahankan sampai API bootstrap snapshot untuk perangkat baru tersedia.',
   );

@@ -10,6 +10,7 @@ export const roleEventTypes = Object.freeze({
   Admin: new Set([
     'outlet.upsert',
     'product.upsert',
+    'product.bulkUpsert',
     'product.favorite',
     'product.delete',
     'customer.upsert',

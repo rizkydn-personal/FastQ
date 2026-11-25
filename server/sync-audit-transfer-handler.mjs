@@ -1,4 +1,13 @@
+import { createHash } from 'node:crypto';
 import { timestampMs } from './timestamp-utils.mjs';
+
+function transferMovementId(transferId, outletId) {
+  return createHash('sha256')
+    .update(`transfer-stock:${transferId}:${outletId}`)
+    .digest('hex')
+    .slice(0, 32)
+    .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+}
 
 export async function applyTransferAndAuditEvent({
   client,
@@ -70,6 +79,25 @@ export async function applyTransferAndAuditEvent({
          WHERE product_id=$3 AND variant_id IS NOT DISTINCT FROM $5::uuid
            AND outlet_id=ANY($6::uuid[])`,
         [t.from, t.to, t.productId, quantity, variantId, [t.from, t.to]],
+      );
+      await client.query(
+        `INSERT INTO stock_movements(id,outlet_id,product_id,variant_id,delta,reason,occurred_at,user_id)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$9),($8,$10,$3,$4,$11,$12,$7,$9)
+         ON CONFLICT(id) DO NOTHING`,
+        [
+          transferMovementId(t.id, t.from),
+          t.from,
+          t.productId,
+          variantId,
+          -quantity,
+          `Transfer ke ${t.to}`,
+          t.at,
+          transferMovementId(t.id, t.to),
+          actor.id,
+          t.to,
+          quantity,
+          `Transfer dari ${t.from}`,
+        ],
       );
       if (variantId) {
         for (const outletId of [t.from, t.to])

@@ -16,6 +16,7 @@ const appSources = [
   'shared/shift-utils.mjs',
   'shared/sync-policy.js',
   'shared/sync-role-policy.mjs',
+  'shared/product-icons.mjs',
   'node_modules/fflate/umd/index.js',
   'assets/fonts/inter.woff2',
   'assets/fonts/plus-jakarta-sans.woff2',
@@ -37,6 +38,7 @@ const publicFileCopies = [
   ['shared/shift-utils.mjs', 'shift-utils.mjs'],
   ['shared/sync-policy.js', 'sync-policy.js'],
   ['shared/sync-role-policy.mjs', 'sync-role-policy.mjs'],
+  ['shared/product-icons.mjs', 'product-icons.mjs'],
   ['icon.svg', 'icon.svg'],
   ['manifest.webmanifest', 'manifest.webmanifest'],
 ];

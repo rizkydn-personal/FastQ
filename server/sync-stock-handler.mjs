@@ -160,8 +160,8 @@ export async function applyStockEvent({ client, event, scope, actor, deviceId, i
       );
     }
     const insertedMovement = await client.query(
-      `INSERT INTO stock_movements(id,outlet_id,product_id,variant_id,delta,reason,occurred_at)
-           VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO NOTHING RETURNING id`,
+      `INSERT INTO stock_movements(id,outlet_id,product_id,variant_id,delta,reason,occurred_at,user_id)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(id) DO NOTHING RETURNING id`,
       [
         event.id,
         d.outletId,
@@ -170,6 +170,7 @@ export async function applyStockEvent({ client, event, scope, actor, deviceId, i
         delta,
         d.reason,
         event.at || new Date().toISOString(),
+        actor.id,
       ],
     );
     if (!insertedMovement.rowCount)

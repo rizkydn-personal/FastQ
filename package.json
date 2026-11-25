@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "node scripts/copy-public-assets.mjs && tailwindcss -i styles/design-system.css -o public/pos.css --content app/pos/index.html && tailwindcss -i styles/dashboard-utilities.css -o app/src/pages/dashboard-utilities.generated.css --content app/src/pages/OwnerDashboard.tsx && vite --host 127.0.0.1",
     "dev:all": "concurrently -k \"node scripts/dev-server.mjs\" \"npm run dev\"",
-    "build": "npm run typecheck && npm run format:check && node scripts/copy-public-assets.mjs && tailwindcss -i styles/design-system.css -o public/pos.css --content app/pos/index.html && tailwindcss -i styles/dashboard-utilities.css -o app/src/pages/dashboard-utilities.generated.css --content app/src/pages/OwnerDashboard.tsx && vite build && node scripts/finalize-service-worker.mjs",
+    "build": "npm run typecheck && npm run format:check && npm run check:style && node scripts/copy-public-assets.mjs && tailwindcss -i styles/design-system.css -o public/pos.css --content app/pos/index.html && tailwindcss -i styles/dashboard-utilities.css -o app/src/pages/dashboard-utilities.generated.css --content app/src/pages/OwnerDashboard.tsx && vite build && node scripts/finalize-service-worker.mjs",
     "start": "node server/index.mjs",
     "test": "node --test scripts/*.test.mjs",
     "format": "prettier --write package.json tsconfig.json app/index.html app/pos/index.html \"app/src/**/*.{ts,tsx,css}\" app/pos/runtime.js \"server/**/*.mjs\" \"shared/**/*.{js,mjs}\" \"scripts/**/*.{js,mjs}\" \"styles/shell/**/*.css\" styles/design-system.css styles/shared/pos-fonts.css sw.js vite.config.ts capacitor.config.ts",
     "format:check": "prettier --check package.json tsconfig.json app/index.html app/pos/index.html \"app/src/**/*.{ts,tsx,css}\" app/pos/runtime.js \"server/**/*.mjs\" \"shared/**/*.{js,mjs}\" \"scripts/**/*.{js,mjs}\" \"styles/shell/**/*.css\" styles/design-system.css styles/shared/pos-fonts.css sw.js vite.config.ts capacitor.config.ts",
+    "check:style": "node scripts/check-style-rules.mjs",
     "typecheck": "tsc --noEmit",
     "db:smoke": "node scripts/db-smoke.mjs",
     "db:migrate": "node scripts/migrate.mjs",

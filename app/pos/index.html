@@ -3464,6 +3464,7 @@
           (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char],
         );
       }
+      const API_BASE = (window.__FASTQ_API_BASE__ || '').replace(/\/$/, '');
 
       function productImageIdIsValid(value) {
         return (
@@ -3485,7 +3486,7 @@
         if (!imageId) {
           return `<span class="absolute inset-0 flex items-center justify-center"><i class="ph ph-${icon} ${iconClass}" aria-hidden="true"></i></span>`;
         }
-        return `<img src="/media/products/${escapeHtml(imageId)}" alt="" width="192" height="192" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full rounded-[inherit] object-cover" onerror="this.onerror=null;this.hidden=true;const p=this.parentElement;const f=document.createElement('span');f.className='absolute inset-0 flex items-center justify-center';f.innerHTML='<i class=&quot;ph ph-${icon} ${iconClass}&quot; aria-hidden=&quot;true&quot;></i>';p.appendChild(f);">`;
+        return `<img src="${API_BASE}/media/products/${escapeHtml(imageId)}" alt="" width="192" height="192" loading="lazy" decoding="async" crossorigin="use-credentials" class="absolute inset-0 h-full w-full rounded-[inherit] object-cover" onerror="this.onerror=null;this.hidden=true;const p=this.parentElement;const f=document.createElement('span');f.className='absolute inset-0 flex items-center justify-center';f.innerHTML='<i class=&quot;ph ph-${icon} ${iconClass}&quot; aria-hidden=&quot;true&quot;></i>';p.appendChild(f);">`;
       }
 
       function renderProductIconOptions() {
@@ -3538,10 +3539,16 @@
         const preview = document.getElementById('prodFormImagePreview');
         if (!preview) return;
         const source =
-          objectUrl || (productImageIdIsValid(imageId) ? `/media/products/${imageId}` : '');
+          objectUrl ||
+          (productImageIdIsValid(imageId) ? `${API_BASE}/media/products/${imageId}` : '');
         preview.classList.toggle('hidden', !source);
-        if (source) preview.src = source;
-        else preview.removeAttribute('src');
+        if (source) {
+          preview.crossOrigin = source.startsWith('blob:') ? null : 'use-credentials';
+          preview.src = source;
+        } else {
+          preview.removeAttribute('crossorigin');
+          preview.removeAttribute('src');
+        }
       }
 
       async function handleProductImageSelection(input) {
@@ -4977,7 +4984,8 @@
           fallbackIcon.setAttribute('aria-hidden', 'true');
           if (productImageIdIsValid(product.imageId)) {
             const image = document.createElement('img');
-            image.src = `/media/products/${product.imageId}`;
+            image.crossOrigin = 'use-credentials';
+            image.src = `${API_BASE}/media/products/${product.imageId}`;
             image.alt = '';
             image.width = 32;
             image.height = 32;

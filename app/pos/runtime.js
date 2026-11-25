@@ -92,7 +92,16 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
   const storage = createPosStorage(() => updateSyncStatus('Penyimpanan lokal gagal', 'error'));
   const savedState = (await storage.readSavedState()) || {};
   let state = { ...createEmptyState(), ...savedState };
-  state.settings ||= {};
+  if (typeof state.settings === 'string') {
+    try {
+      state.settings = JSON.parse(state.settings);
+    } catch {
+      state.settings = {};
+    }
+  }
+  if (!state.settings || typeof state.settings !== 'object' || Array.isArray(state.settings)) {
+    state.settings = {};
+  }
   state.settings.service = Number(state.settings.service) || 0;
   state.syncOutbox ||= [];
   state.syncIssues ||= [];

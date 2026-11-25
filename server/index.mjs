@@ -732,6 +732,7 @@ const productImages = createProductImageHandler({
   isUuid,
   json,
   securityHeaders,
+  corsHeaders,
 });
 const syncEvents = createSyncHandler({
   pool,

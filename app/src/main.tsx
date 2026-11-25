@@ -2,6 +2,9 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 
+const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+(window as Window & { __FASTQ_API_BASE__?: string }).__FASTQ_API_BASE__ = apiBase;
+
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker

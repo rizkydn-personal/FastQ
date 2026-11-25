@@ -21,6 +21,11 @@ import {
 const PENDING_SERVER_LOGOUT_KEY = 'fastq-pending-server-logout-v1';
 const OFFLINE_SESSION_KEY = 'fastq-offline-session-v1';
 const STOCK_SNAPSHOT_VERSION = 1;
+const API_BASE = (
+  window.__FASTQ_API_BASE__ ||
+  document.querySelector('meta[name="fastq-api-base"]')?.content ||
+  ''
+).replace(/\/$/, '');
 
 function isRetryableStockConflictIssue(issue) {
   const event = issue?.event;
@@ -227,9 +232,9 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
   function sendApiRequest(path, method = 'GET', body, requestSignal = null) {
     const timeoutMs = path === '/api/sync' ? 60000 : path === '/api/auth/logout' ? 3000 : 15000;
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
-    return fetch(path, {
+    return fetch(API_BASE + path, {
       method,
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
       signal: requestSignal ? AbortSignal.any([requestSignal, timeoutSignal]) : timeoutSignal,
@@ -439,8 +444,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     updateSyncStatus('Menyinkronkan…', 'syncing');
     try {
       if (Date.now() - lastHealthProbeAt > 10_000) {
-        const health = await fetch('/api/health/live', {
-          credentials: 'same-origin',
+        const health = await fetch(API_BASE + '/api/health/live', {
+          credentials: 'include',
           cache: 'no-store',
           signal: AbortSignal.timeout(2500),
         });
@@ -817,9 +822,9 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     if (!['image/webp', 'image/jpeg'].includes(compressed.type) || compressed.size > 20 * 1024)
       throw new Error('Gambar belum dapat dikompres hingga maksimal 20 KB.');
 
-    const response = await fetch('/api/product-images', {
+    const response = await fetch(API_BASE + '/api/product-images', {
       method: 'POST',
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: { 'Content-Type': compressed.type },
       body: compressed,
       signal: AbortSignal.timeout(15000),

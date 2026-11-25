@@ -102,8 +102,19 @@ async function copyIconStyles() {
 }
 
 async function copyPublicAssets(versionedServiceWorker) {
+  const apiBase = (process.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  const copyPublicFile = async ([source, output]) => {
+    const target = `${publicDirectory}/${output}`;
+    if (output.endsWith('.html')) {
+      const html = await readFile(source, 'utf8');
+      await writeFile(target, html.replaceAll('%VITE_API_BASE_URL%', apiBase));
+      return;
+    }
+    await copyFile(source, target);
+  };
+
   await Promise.all([
-    ...publicFileCopies.map(([source, output]) => copyFile(source, `${publicDirectory}/${output}`)),
+    ...publicFileCopies.map(copyPublicFile),
     ...stylesheetCopies.map(([source, output]) => copyFile(source, `${publicDirectory}/${output}`)),
     ...brandAssets.map((name) => copyFile(`assets/branding/${name}`, `${publicDirectory}/${name}`)),
     ...fontAssets.map((name) =>

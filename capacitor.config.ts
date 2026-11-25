@@ -6,7 +6,6 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    url: 'https://breezy-crin-brutalx-da8355e1.apps.mistral.run',
   },
   plugins: {
     CapacitorSQLite: {

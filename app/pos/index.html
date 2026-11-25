@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FastQ POS - Kasir & Manajemen Toko</title>
+    <meta name="fastq-api-base" content="%VITE_API_BASE_URL%" />
+    <script>
+      window.__FASTQ_API_BASE__ = (
+        document.querySelector('meta[name="fastq-api-base"]')?.content || ''
+      ).replace(/\/$/, '');
+    </script>
     <link rel="stylesheet" href="./pos.css" />
     <link rel="stylesheet" href="./pos-fonts.css" />
     <link rel="stylesheet" href="./vendor/phosphor-duotone.css" />

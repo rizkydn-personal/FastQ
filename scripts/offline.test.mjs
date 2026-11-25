@@ -16,6 +16,10 @@ const source = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
 const runtimeSource = await readFile(new URL('../app/pos/runtime.js', import.meta.url), 'utf8');
 const posPageSource = await readFile(new URL('../app/pos/index.html', import.meta.url), 'utf8');
 const appSource = await readFile(new URL('../app/src/App.tsx', import.meta.url), 'utf8');
+const nativeStorageSource = await readFile(
+  new URL('../app/src/nativeStorage.ts', import.meta.url),
+  'utf8',
+);
 const designSystemSource = await readFile(
   new URL('../styles/design-system.css', import.meta.url),
   'utf8',

@@ -176,21 +176,18 @@ Gunakan Windows atau Linux yang sudah memasang Node.js 22.12 atau lebih baru, An
 
 Untuk Gradle 8.14.3 dan Android Gradle Plugin 8.13.0, gunakan JDK 21. JDK 26 menghasilkan error `Unsupported class file major version 70` dan tidak kompatibel dengan kombinasi Gradle/AGP saat ini.
 
-Sebelum sinkronisasi, pastikan aplikasi memakai URL API produksi yang benar. Karena permintaan POS memakai path relatif seperti `/api/sync`, konfigurasi Capacitor dapat mengarahkannya ke domain VPS dengan menambahkan `server.url` pada `capacitor.config.ts`:
+Sebelum build rilis, pastikan aplikasi memakai URL API produksi yang benar. Build Android publik sebaiknya memakai aset lokal bundel (tanpa `server.url`) agar fix JavaScript ikut terbawa di APK. Set `VITE_API_BASE_URL` ke domain backend HTTPS saat build:
 
-```ts
-const config: CapacitorConfig = {
-  appId: 'id.co.fastq.pos',
-  appName: 'FastQ',
-  webDir: 'dist',
-  server: {
-    androidScheme: 'https',
-    url: 'https://pos.example.com',
-  },
-};
+```sh
+# PowerShell
+$env:VITE_API_BASE_URL='https://pos.example.com'
+npm run build
+npx cap sync android
 ```
 
-Gunakan URL domain produksi yang dapat dibuka dengan HTTPS. Jangan memasukkan `/api` pada `server.url` karena aplikasi tetap memanggil `/api/...` sendiri. Untuk pengujian lokal, gunakan alamat jaringan perangkat menuju server, misalnya `http://192.168.1.10:4173`, tetapi tetap pastikan server mendengarkan pada alamat jaringan dan Android dapat mengaksesnya. Hapus atau ganti `server.url` sebelum build rilis jika aplikasi hanya boleh memakai aset lokal.
+Gunakan URL domain produksi yang dapat dibuka dengan HTTPS. Jangan memasukkan `/api` pada `VITE_API_BASE_URL` karena aplikasi tetap memanggil path `/api/...` sendiri. Untuk pengujian lokal, gunakan alamat jaringan perangkat menuju server, misalnya `http://192.168.1.10:4173`, dan pastikan server mendengarkan pada alamat jaringan.
+
+`server.url` di [capacitor.config.ts](capacitor.config.ts) sebaiknya hanya dipakai untuk live-reload/dev. Jangan gunakan URL preview sementara untuk build publish, karena aplikasi akan memuat JavaScript remote dan update fix lokal tidak ikut sampai remote di-deploy.
 
 Sinkronkan web build dan proyek native:
 

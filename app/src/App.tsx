@@ -103,7 +103,9 @@ export default function App() {
       try {
         if (Capacitor.isNativePlatform()) {
           const { initializeNativeStorage } = await import('./nativeStorage');
-          await initializeNativeStorage();
+          const nativeStorageReady = await initializeNativeStorage();
+          if (!nativeStorageReady)
+            console.warn('native-sqlite-unavailable; using webview indexeddb storage');
 
           if (Capacitor.getPlatform() === 'android') {
             try {

@@ -172,6 +172,22 @@ body.viewport-locked {
     min-width: 0;
     max-width: 100%;
   }
+  #page-produk > .tab-fixed-header {
+    gap: 4px;
+  }
+  #page-produk > .tab-fixed-header > div:last-child {
+    gap: 4px;
+  }
+  #page-produk > .tab-fixed-header button {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #stockHistoryList article {
+    min-height: 58px;
+  }
 }
 body.design-auth-required > :not(#designStartupOverlay):not(#designActionDialog):not(script) {
   visibility: hidden !important;

@@ -47,6 +47,7 @@ const staticFileAllowlist = new Set([
   '/shift-utils.mjs',
   '/sync-policy.js',
   '/sync-role-policy.mjs',
+  '/product-icons.mjs',
   '/landing.css',
   '/shell-theme.css',
   '/typography.css',

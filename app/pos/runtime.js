@@ -4,6 +4,7 @@ import { createSaleNumber, createUuid } from './pos-utils.mjs';
 import { createRefundRecord } from './sale-policy.mjs';
 import { expectedCashForShift } from './shift-utils.mjs';
 import { roleEventTypes } from './sync-role-policy.mjs';
+import { PRODUCT_ICONS, isProductIcon } from './product-icons.mjs';
 import {
   collectPendingStockDeltas,
   collectPendingStockProductIds,
@@ -101,6 +102,13 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
   state.attendance ||= [];
   state.users ||= [];
   state.transfers ||= [];
+  state.stockMovements ||= [];
+  state.stockMovements = state.stockMovements
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
+    .slice(0, 500);
+  state.sales = state.sales.sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 1000);
+  state.audit = state.audit.sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 1000);
+  state.holds = Array.isArray(state.holds) ? state.holds.slice(0, 100) : [];
   state.holds ||= [];
   if (state.stockSnapshotVersion !== STOCK_SNAPSHOT_VERSION) {
     state.catalogInitialized = false;
@@ -121,6 +129,12 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     lastHealthProbeAt = 0,
     salesLoading = false,
     salesHasMore = false,
+    stockHistoryLoading = false,
+    stockHistoryPageCursors = [null],
+    stockHistoryPage = 0,
+    stockHistoryNextCursor = null,
+    stockHistoryHasMore = false,
+    stockHistoryFilters = {},
     disposed = false,
     status = { label: 'Lokal', state: 'local' };
   const getCurrentRole = () => session?.user?.role || 'Kasir';
@@ -129,8 +143,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
   const catalogNeedsBootstrap = () => !state.catalogInitialized && state.products.length === 0;
   const offlineStatusLabel = () =>
     catalogNeedsBootstrap()
-      ? 'Katalog belum tersimpan · perlu sinkronisasi online'
-      : `Offline · ${state.syncOutbox.length} antrean`;
+      ? 'Katalog belum tersimpan, perlu sinkronisasi online'
+      : `Offline, ${state.syncOutbox.length} antrean`;
   const publishStateChange = () => {
     if (!disposed) onChange(getStateSnapshot());
   };
@@ -238,6 +252,11 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     state.settings.sessionExpiresAt = null;
     if (clearData) {
       await storage.clear();
+      try {
+        navigator.serviceWorker?.controller?.postMessage({
+          type: 'FASTQ_CLEAR_PRODUCT_MEDIA',
+        });
+      } catch {}
       state = createEmptyState();
       cart = [];
       cartDiscount = null;
@@ -272,6 +291,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       globalDiscount: cartDiscount?.kind === 'amount' ? cartDiscount.value : 0,
       sales: state.sales,
       salesHasMore,
+      stockMovements: state.stockMovements,
+      stockHistoryHasMore,
       shifts: state.shifts,
       activeShift: state.activeShift,
       cash: state.cashMovements,
@@ -307,9 +328,25 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           Object.assign(old, d);
           old.stock = stock;
           old.stockByOutlet = byOutlet;
+          old.icon = d.icon ?? old.icon ?? 'cube';
+          if (Object.prototype.hasOwnProperty.call(d, 'imageId')) old.imageId = d.imageId || null;
         } else state.products.push(d);
         break;
       }
+      case 'product.bulkUpsert':
+        for (const product of d.products || []) {
+          const old = state.products.find((item) => item.id === product.id);
+          const { stockDelta: _stockDelta, ...savedProduct } = product;
+          if (old) {
+            const stock = old.stock;
+            Object.assign(old, savedProduct);
+            old.stock = stock;
+            old.icon = savedProduct.icon ?? old.icon ?? 'cube';
+            if (Object.prototype.hasOwnProperty.call(savedProduct, 'imageId'))
+              old.imageId = savedProduct.imageId || null;
+          } else state.products.push(savedProduct);
+        }
+        break;
       case 'product.favorite': {
         const p = state.products.find((x) => x.id === d.productId);
         if (p) p.favorite = !!d.favorite;
@@ -455,7 +492,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       }
       if (batch.length)
         updateSyncStatus(
-          `Mengirim ${batch.length} dari ${prepared.pending.length} event`,
+          `Mengunggah perubahan ${batch.length} dari ${prepared.pending.length}`,
           'syncing',
         );
       if (getCurrentRole() === 'Admin' && !state.syncInitialized) {
@@ -543,6 +580,9 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       });
       state.syncIssues = state.syncIssues.filter((e) => !accepted.has(e.eventId));
       for (const event of result.events || []) mergeSyncEvent(event);
+      for (const attendance of result.attendance || []) {
+        mergeSyncEvent({ event_type: 'attendance.upsert', payload: attendance });
+      }
       for (const product of result.bootstrapProducts || [])
         mergeSyncEvent({ event_type: 'product.upsert', payload: product });
       for (const conflict of result.stockConflicts || []) {
@@ -627,7 +667,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         if (manual) {
           await clearSession(false);
         } else {
-          updateSyncStatus('Sesi server berakhir · data lokal tetap tersedia', 'offline');
+          updateSyncStatus('Sesi server berakhir, data lokal tetap tersedia', 'offline');
         }
       } else {
         if (['SYNC_RESYNC_REQUIRED', 'SYNC_CURSOR_ROLLBACK'].includes(error.code)) {
@@ -635,7 +675,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           state.syncCursor = 0;
           state.settings.bootstrapOffset = 0;
           persistState();
-          updateSyncStatus('Menyegarkan katalog dari server · antrean tetap aman', 'pending');
+          updateSyncStatus('Menyegarkan katalog dari server, antrean tetap aman', 'pending');
           if (!syncTimer)
             syncTimer = setTimeout(() => {
               syncTimer = null;
@@ -647,9 +687,9 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           !navigator.onLine || !Number.isInteger(error.status) || error.status >= 500;
         updateSyncStatus(
           catalogNeedsBootstrap()
-            ? 'Katalog belum tersimpan · server perlu dijangkau'
+            ? 'Katalog belum tersimpan, server perlu dijangkau'
             : serverUnavailable
-              ? 'Server tidak terjangkau · data lokal'
+              ? 'Server tidak terjangkau, data lokal'
               : 'Sinkronisasi gagal',
           serverUnavailable ? 'offline' : 'error',
         );
@@ -700,6 +740,94 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     await loadSalesHistory(true);
     return result;
   }
+  async function uploadProductImage(file) {
+    if (!roleEventTypes[getCurrentRole()]?.has('product.upsert'))
+      throw new Error('Peran akun ini tidak dapat mengunggah gambar produk.');
+    if (
+      !file ||
+      !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+      !Number.isFinite(file.size) ||
+      file.size <= 0 ||
+      file.size > 8 * 1024 * 1024
+    )
+      throw new Error('Pilih gambar JPEG, PNG, atau WebP dengan ukuran maksimal 8 MB.');
+
+    const sourceBitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const scale = 192 / Math.max(sourceBitmap.width, sourceBitmap.height);
+    const width = Math.max(1, Math.round(sourceBitmap.width * scale));
+    const height = Math.max(1, Math.round(sourceBitmap.height * scale));
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(sourceBitmap, {
+        resizeWidth: width,
+        resizeHeight: height,
+        resizeQuality: 'high',
+      });
+    } finally {
+      sourceBitmap.close();
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = 192;
+    canvas.height = 192;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      bitmap.close();
+      throw new Error('Peramban tidak dapat menyiapkan gambar produk.');
+    }
+    const cropSize = Math.min(bitmap.width, bitmap.height);
+    const cropX = Math.floor((bitmap.width - cropSize) / 2);
+    const cropY = Math.floor((bitmap.height - cropSize) / 2);
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    try {
+      context.drawImage(
+        bitmap,
+        cropX,
+        cropY,
+        cropSize,
+        cropSize,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+    } finally {
+      bitmap.close();
+    }
+
+    const encode = (type, quality) =>
+      new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('Gambar gagal dikompres.'))),
+          type,
+          quality,
+        );
+      });
+    let compressed;
+    for (const quality of [0.72, 0.6, 0.5]) {
+      compressed = await encode('image/webp', quality);
+      if (compressed.type === 'image/webp' && compressed.size <= 20 * 1024) break;
+    }
+    if (compressed.type !== 'image/webp' || compressed.size > 20 * 1024) {
+      for (const quality of [0.72, 0.6, 0.5]) {
+        compressed = await encode('image/jpeg', quality);
+        if (compressed.type === 'image/jpeg' && compressed.size <= 20 * 1024) break;
+      }
+    }
+    if (!['image/webp', 'image/jpeg'].includes(compressed.type) || compressed.size > 20 * 1024)
+      throw new Error('Gambar belum dapat dikompres hingga maksimal 20 KB.');
+
+    const response = await fetch('/api/product-images', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': compressed.type },
+      body: compressed,
+      signal: AbortSignal.timeout(15000),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Gambar produk gagal diunggah.');
+    return result;
+  }
   async function registerAccount(input) {
     if (state.products.length || state.sales.length)
       throw new Error('Gunakan profil perangkat baru untuk mendaftarkan toko.');
@@ -722,7 +850,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     const pendingLogout = hasPendingServerLogout();
     if (pendingLogout) {
       session = null;
-      updateSyncStatus('Logout lokal · menunggu koneksi', 'offline');
+      updateSyncStatus('Logout lokal, menunggu koneksi', 'offline');
       if (navigator.onLine) void revokePendingServerLogout();
     }
     const cachedSession = session?.user ? session : null;
@@ -756,7 +884,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       } catch (error) {
         if (error.status === 401 && cachedSession) {
           session = cachedSession;
-          updateSyncStatus('Sesi server perlu diperbarui · data lokal', 'offline');
+          updateSyncStatus('Sesi server perlu diperbarui, data lokal', 'offline');
         } else if (error.status === 401) {
           session = null;
           delete state.settings.serverSession;
@@ -766,13 +894,13 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           session = cachedSession;
           updateSyncStatus(
             catalogNeedsBootstrap()
-              ? 'Katalog belum tersimpan · server perlu dijangkau'
-              : 'Server tidak terjangkau · data lokal',
+              ? 'Katalog belum tersimpan, server perlu dijangkau'
+              : 'Server tidak terjangkau, data lokal',
             'offline',
           );
         } else {
           session = null;
-          updateSyncStatus('Offline · login diperlukan', 'offline');
+          updateSyncStatus('Offline, login diperlukan', 'offline');
         }
       }
     } else if (!pendingLogout && cachedSession) {
@@ -781,7 +909,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     } else if (!pendingLogout) session = null;
     if (!session && !pendingLogout)
       updateSyncStatus(
-        navigator.onLine ? 'Login diperlukan' : 'Offline · login diperlukan',
+        navigator.onLine ? 'Login diperlukan' : 'Offline, login diperlukan',
         navigator.onLine ? 'local' : 'offline',
       );
     publishStateChange();
@@ -884,7 +1012,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       cart.push({
         productId: p.id,
         variantId: v?.id || null,
-        name: v ? `${p.name} · ${v.name}` : p.name,
+        name: v ? `${p.name} - ${v.name}` : p.name,
         price: Number(v?.price ?? p.price) || 0,
         qty: 1,
         discount: null,
@@ -1056,13 +1184,23 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     if (!roleEventTypes[getCurrentRole()]?.has('product.upsert'))
       return showToast('Peran akun ini tidak dapat mengubah produk.');
     const existing = id ? findProductById(id) : null;
+    const productData = {
+      ...data,
+      icon: data.icon ?? existing?.icon ?? 'cube',
+      imageId: Object.prototype.hasOwnProperty.call(data, 'imageId')
+        ? data.imageId
+        : existing?.imageId || null,
+    };
+    if (!isProductIcon(productData.icon)) return showToast('Ikon produk tidak valid.');
     if (
-      state.products.some((p) => p !== existing && p.sku.toLowerCase() === data.sku.toLowerCase())
+      state.products.some(
+        (p) => p !== existing && p.sku.toLowerCase() === productData.sku.toLowerCase(),
+      )
     )
       return showToast('SKU sudah digunakan.');
     const before = Number(existing?.stock) || 0;
     if (existing) {
-      Object.assign(existing, data);
+      Object.assign(existing, productData);
       enqueueSyncEvent('product.upsert', existing, existing.createdOutletId || state.activeOutlet);
       if (before !== Number(data.stock)) {
         state.stockMovements.unshift({
@@ -1075,6 +1213,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           reason: 'Perubahan stok dari formulir produk',
           role: getCurrentRole(),
         });
+        state.stockMovements.length = Math.min(state.stockMovements.length, 500);
         enqueueSyncEvent('stock.delta', {
           productId: existing.id,
           variantId: null,
@@ -1086,8 +1225,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     } else {
       const p = {
         id: createUuid(),
-        ...data,
-        stockByOutlet: { [state.activeOutlet]: Number(data.stock) || 0 },
+        ...productData,
+        stockByOutlet: { [state.activeOutlet]: Number(productData.stock) || 0 },
         variants: [],
         favorite: false,
         createdOutletId: state.activeOutlet,
@@ -1095,23 +1234,38 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       state.products.unshift(p);
       enqueueSyncEvent('product.upsert', p, state.activeOutlet);
     }
-    recordAuditEntry(existing ? 'Produk diperbarui' : 'Produk ditambahkan', data.sku);
+    recordAuditEntry(existing ? 'Produk diperbarui' : 'Produk ditambahkan', productData.sku);
     persistState();
     publishStateChange();
     void synchronizeState();
   }
-  async function importProducts(rows) {
+  async function importProducts(rows, { onProgress } = {}) {
     if (!roleEventTypes[getCurrentRole()]?.has('product.upsert'))
       throw new Error('Peran akun ini tidak dapat menambahkan produk.');
     if (!Array.isArray(rows)) throw new TypeError('Daftar produk impor tidak valid.');
 
     const result = { added: 0, updated: 0, errors: [] };
+    const bulkProducts = new Map();
+    const addBulkProduct = (product) => {
+      const previous = bulkProducts.get(product.id);
+      if (previous)
+        product.stockDelta =
+          previous.stockDelta == null ? null : previous.stockDelta + product.stockDelta;
+      bulkProducts.set(product.id, product);
+    };
+    const productsBySku = new Map(
+      state.products.map((product) => [product.sku.toLowerCase(), product]),
+    );
     const validQuantity = (value) =>
       Number.isFinite(value) &&
       value >= 0 &&
       value < 1e15 &&
       Math.abs(value * 1000 - Math.round(value * 1000)) <= 1e-6;
     for (const [index, row] of rows.entries()) {
+      if (onProgress && index % 100 === 0) {
+        onProgress({ phase: 'processing', current: index, total: rows.length });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
       const line = Number.isSafeInteger(row?.rowNumber) ? row.rowNumber : index + 2;
       const sku = String(row?.sku ?? '').trim();
       const name = String(row?.name ?? '').trim();
@@ -1140,17 +1294,43 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         continue;
       }
 
-      const existing = state.products.find(
-        (product) => product.sku.toLowerCase() === sku.toLowerCase(),
-      );
+      const existing = productsBySku.get(sku.toLowerCase());
       if (existing && existing.name.trim().toLowerCase() === name.toLowerCase()) {
         const before = Number(existing.stock) || 0;
         Object.assign(existing, { price, cost, stock });
-        enqueueSyncEvent(
-          'product.upsert',
-          existing,
-          existing.createdOutletId || state.activeOutlet,
-        );
+        existing.stockByOutlet = {
+          ...(existing.stockByOutlet || {}),
+          [state.activeOutlet]: stock,
+        };
+        const useBulk =
+          !(existing.variants || []).length &&
+          (!existing.createdOutletId || existing.createdOutletId === state.activeOutlet);
+        const stockDelta = stock - before;
+        if (useBulk) {
+          addBulkProduct({
+            id: existing.id,
+            sku: existing.sku,
+            barcode: existing.barcode || null,
+            name: existing.name,
+            category: existing.category,
+            unit: existing.unit || 'pcs',
+            price: existing.price,
+            cost: existing.cost || 0,
+            minStock: existing.minStock || 0,
+            stock,
+            stockDelta,
+            favorite: !!existing.favorite,
+            icon: existing.icon || 'cube',
+            imageId: existing.imageId || null,
+            variants: [],
+          });
+        } else {
+          enqueueSyncEvent(
+            'product.upsert',
+            existing,
+            existing.createdOutletId || state.activeOutlet,
+          );
+        }
         if (before !== stock) {
           state.stockMovements.unshift({
             id: createUuid(),
@@ -1162,13 +1342,15 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
             reason: 'Impor Excel',
             role: getCurrentRole(),
           });
-          enqueueSyncEvent('stock.delta', {
-            productId: existing.id,
-            variantId: null,
-            outletId: state.activeOutlet,
-            delta: stock - before,
-            reason: 'Impor Excel',
-          });
+          state.stockMovements.length = Math.min(state.stockMovements.length, 500);
+          if (!useBulk)
+            enqueueSyncEvent('stock.delta', {
+              productId: existing.id,
+              variantId: null,
+              outletId: state.activeOutlet,
+              delta: stockDelta,
+              reason: 'Impor Excel',
+            });
         }
         result.updated += 1;
         continue;
@@ -1181,9 +1363,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
           const marker = suffix === 1 ? '-D' : `-D${suffix}`;
           productSku = `${sku.slice(0, 40 - marker.length)}${marker}`;
           suffix += 1;
-        } while (
-          state.products.some((product) => product.sku.toLowerCase() === productSku.toLowerCase())
-        );
+        } while (productsBySku.has(productSku.toLowerCase()));
       }
       const product = {
         id: createUuid(),
@@ -1199,14 +1379,53 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
         createdOutletId: state.activeOutlet,
       };
       state.products.unshift(product);
-      enqueueSyncEvent('product.upsert', product, state.activeOutlet);
+      productsBySku.set(productSku.toLowerCase(), product);
+      addBulkProduct({
+        id: product.id,
+        sku: product.sku,
+        barcode: null,
+        name: product.name,
+        category: product.category,
+        unit: 'pcs',
+        price: product.price,
+        cost: product.cost,
+        minStock: 0,
+        stock: product.stock,
+        stockDelta: null,
+        favorite: false,
+        icon: 'cube',
+        imageId: null,
+        variants: [],
+      });
       result.added += 1;
     }
 
     if (result.added || result.updated) {
+      const bulkProductList = [...bulkProducts.values()];
+      const encoder = new TextEncoder();
+      let chunk = [];
+      let chunkBytes = encoder.encode('{"products":[]}').length;
+      const enqueueBulkChunk = () => {
+        if (!chunk.length) return;
+        enqueueSyncEvent('product.bulkUpsert', { products: chunk }, state.activeOutlet);
+        chunk = [];
+        chunkBytes = encoder.encode('{"products":[]}').length;
+      };
+      for (const product of bulkProductList) {
+        const productBytes = encoder.encode(JSON.stringify(product)).length;
+        if (chunk.length && (chunk.length >= 500 || chunkBytes + productBytes + 1 > 350 * 1024))
+          enqueueBulkChunk();
+        if (chunkBytes + productBytes + 1 > 350 * 1024)
+          throw new Error('Data satu produk melebihi batas ukuran impor sinkronisasi.');
+        chunk.push(product);
+        chunkBytes += productBytes + (chunk.length > 1 ? 1 : 0);
+      }
+      enqueueBulkChunk();
       recordAuditEntry('Impor produk', `${result.added} ditambahkan, ${result.updated} diperbarui`);
+      onProgress?.({ phase: 'saving', current: rows.length, total: rows.length });
       persistState();
       await flushPendingWrites();
+      onProgress?.({ phase: 'uploading', current: rows.length, total: rows.length });
       void synchronizeState();
     }
     return result;
@@ -1233,6 +1452,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       role: getCurrentRole(),
     };
     state.stockMovements.unshift(movement);
+    state.stockMovements.length = Math.min(state.stockMovements.length, 500);
     enqueueSyncEvent('stock.delta', {
       productId: id,
       variantId: null,
@@ -1285,6 +1505,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       closedAt: new Date().toISOString(),
       expectedCash: calculateExpectedCash(),
       actualCash: actual,
+      physicalCash: actual,
       difference: actual - calculateExpectedCash(),
     };
     mergeShiftEvent(state, closed);
@@ -1317,7 +1538,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     };
     state.cashMovements.unshift(movement);
     enqueueSyncEvent('cash.upsert', movement);
-    recordAuditEntry(type === 'in' ? 'Kas masuk' : 'Kas keluar', `${amount} · ${reason}`);
+    recordAuditEntry(type === 'in' ? 'Kas masuk' : 'Kas keluar', `${amount}, ${reason}`);
     persistState();
     publishStateChange();
     void synchronizeState();
@@ -1455,9 +1676,12 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
+            capturedAt: new Date(
+              Number.isFinite(pos.timestamp) && pos.timestamp > 0 ? pos.timestamp : Date.now(),
+            ).toISOString(),
           }),
         () => reject(new Error('Lokasi diperlukan untuk mencatat absensi.')),
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
       ),
     );
     const userId = session.user.id,
@@ -1650,7 +1874,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
       updateSyncStatus(
         error.code === 'LOCAL_STORAGE_WRITE_FAILED'
           ? 'Penyimpanan lokal gagal'
-          : 'Riwayat transaksi belum diperbarui · data lokal',
+          : 'Riwayat transaksi belum diperbarui, data lokal',
         error.code === 'LOCAL_STORAGE_WRITE_FAILED' ? 'error' : 'offline',
       );
     } finally {
@@ -1659,6 +1883,89 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
   }
   function refreshSalesHistory() {
     return loadSalesHistory(false, true);
+  }
+  async function loadStockHistory(filters = {}, reset = true, direction = 'next') {
+    if (!['Pemilik', 'Admin', 'Manajer'].includes(getCurrentRole()))
+      throw new Error('Peran akun ini tidak dapat melihat riwayat stok.');
+    if (stockHistoryLoading) return null;
+    if (reset) {
+      stockHistoryFilters = { ...filters };
+      stockHistoryPageCursors = [null];
+      stockHistoryPage = 0;
+      stockHistoryNextCursor = null;
+      stockHistoryHasMore = false;
+    } else if (direction === 'prev') {
+      if (stockHistoryPage === 0) return null;
+      stockHistoryPage -= 1;
+    } else {
+      if (!stockHistoryHasMore) return null;
+      stockHistoryPage += 1;
+    }
+    stockHistoryLoading = true;
+    try {
+      if (navigator.onLine && session) {
+        const params = new URLSearchParams({ limit: '10' });
+        for (const key of ['productId', 'from', 'to', 'kind']) {
+          if (stockHistoryFilters[key]) params.set(key, stockHistoryFilters[key]);
+        }
+        const cursor = stockHistoryPageCursors[stockHistoryPage];
+        if (cursor) {
+          params.set('before', cursor.before);
+          params.set('beforeId', cursor.beforeId);
+        }
+        const result = await sendApiRequest(`/api/stock-movements?${params}`);
+        stockHistoryNextCursor = result.next || null;
+        if (stockHistoryNextCursor)
+          stockHistoryPageCursors[stockHistoryPage + 1] = stockHistoryNextCursor;
+        stockHistoryHasMore = !!result.hasMore;
+        return {
+          movements: result.movements || [],
+          hasMore: stockHistoryHasMore,
+          hasPrevious: stockHistoryPage > 0,
+          page: stockHistoryPage + 1,
+          offline: false,
+        };
+      }
+      const filteredLocalMovements = state.stockMovements.filter((movement) => {
+        const product = findProductById(movement.productId);
+        const at = String(movement.at || '');
+        if (stockHistoryFilters.productId && movement.productId !== stockHistoryFilters.productId)
+          return false;
+        if (stockHistoryFilters.from && at.slice(0, 10) < stockHistoryFilters.from) return false;
+        if (stockHistoryFilters.to && at.slice(0, 10) > stockHistoryFilters.to) return false;
+        if (stockHistoryFilters.kind && stockHistoryFilters.kind !== 'Semua') {
+          const reason = movement.reason || '';
+          const kind = reason.startsWith('Penjualan ')
+            ? 'Penjualan'
+            : reason.startsWith('Impor ')
+              ? 'Impor'
+              : reason.startsWith('Transfer ')
+                ? 'Transfer'
+                : reason.startsWith('Refund ')
+                  ? 'Refund'
+                  : 'Penyesuaian';
+          if (kind !== stockHistoryFilters.kind) return false;
+        }
+        movement.productName ||= product?.name || 'Produk';
+        movement.sku ||= product?.sku || '';
+        movement.actor ||= 'Perangkat ini';
+        return true;
+      });
+      const localMovements = filteredLocalMovements.slice(
+        stockHistoryPage * 10,
+        stockHistoryPage * 10 + 10,
+      );
+      stockHistoryHasMore = (stockHistoryPage + 1) * 10 < filteredLocalMovements.length;
+      return {
+        movements: localMovements,
+        hasMore: stockHistoryHasMore,
+        hasPrevious: stockHistoryPage > 0,
+        page: stockHistoryPage + 1,
+        offline: true,
+      };
+    } finally {
+      stockHistoryLoading = false;
+    }
   }
   async function loadSaleDetails(id) {
     let sale = state.sales.find((item) => item.id === id || item.number === id);
@@ -1804,6 +2111,8 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     },
     synchronize: synchronizeState,
     getStateSnapshot,
+    getProductIcons: () => PRODUCT_ICONS,
+    uploadProductImage,
     getStorageDiagnostics: () => ({
       ...storage.getWriteDiagnostics(),
       catalogInitialized: !!state.catalogInitialized,
@@ -1812,6 +2121,7 @@ export async function createPosRuntime({ onChange = () => {}, onToast = () => {}
     loadSaleDetails,
     loadSalesHistory,
     refreshSalesHistory,
+    loadStockHistory,
     addProductToCart,
     updateCartQuantity,
     toggleFavorite,

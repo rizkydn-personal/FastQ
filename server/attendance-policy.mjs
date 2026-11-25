@@ -46,6 +46,18 @@ export function filterRemoteSyncEvents(events, role, deviceId) {
         }
         return { ...event, payload: product };
       }
+      if (event.event_type === 'product.bulkUpsert') {
+        const payload = event.payload || {};
+        return {
+          ...event,
+          payload: {
+            ...payload,
+            products: Array.isArray(payload.products)
+              ? payload.products.map(({ cost, ...product }) => product)
+              : payload.products,
+          },
+        };
+      }
       return event;
     });
 }

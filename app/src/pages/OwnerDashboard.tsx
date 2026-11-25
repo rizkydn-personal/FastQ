@@ -895,7 +895,7 @@ export default function OwnerDashboard() {
                   type="button"
                   onClick={() => openTrendPreview(day)}
                   className="flex-1 h-full flex flex-col items-center justify-end group focus:outline-none"
-                  title={`${day.day}: ${formatRupiah(day.value)} · ${day.transactions} transaksi`}
+                  title={`${day.day}: ${formatRupiah(day.value)}, ${day.transactions} transaksi`}
                 >
                   <div className="w-full flex-1 flex items-end justify-center">
                     <div
@@ -968,7 +968,7 @@ export default function OwnerDashboard() {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}{' '}
-                        · {sale.cashier_name}
+                        - {sale.cashier_name}
                       </div>
                     </td>
                     <td className="py-2.5 px-2 text-slate-600 whitespace-nowrap tabular-nums hidden sm:table-cell">
@@ -1040,7 +1040,7 @@ export default function OwnerDashboard() {
                         {product.name}
                       </div>
                       <div className="text-[11px] text-slate-500 sm:hidden mt-0.5 tabular-nums truncate">
-                        {product.sku} · Min. {formatQuantity(product.min_stock)}
+                        {product.sku} - Min. {formatQuantity(product.min_stock)}
                       </div>
                     </td>
                     <td

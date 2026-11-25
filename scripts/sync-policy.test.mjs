@@ -132,6 +132,35 @@ test('bootstrap stock delta collection skips malformed entries and preserves val
   assert.equal(events[1], 'bad-entry');
 });
 
+test('bulk catalog events retain new and updated stock while pending offline', () => {
+  const pending = [
+    event('bulk', 'product.bulkUpsert', {
+      products: [
+        { id: 'new-product', stock: 5, stockDelta: null },
+        { id: 'updated-product', stock: 8, stockDelta: 3 },
+      ],
+    }),
+  ];
+  assert.deepEqual(
+    [...collectPendingStockDeltas(pending)],
+    [
+      ['outlet|new-product|', 5],
+      ['outlet|updated-product|', 3],
+    ],
+  );
+  assert.deepEqual([...collectPendingStockProductIds(pending)], ['new-product', 'updated-product']);
+
+  const state = {
+    products: [
+      { id: 'new-product', stock: 0 },
+      { id: 'updated-product', stock: 0 },
+    ],
+  };
+  mergeStockSnapshot(state, 'outlet', [], pending);
+  assert.equal(state.products[0].stock, 5);
+  assert.equal(state.products[1].stock, 3);
+});
+
 test('stock snapshots refresh outlet balances while retaining pending local stock changes', () => {
   const outletId = 'outlet-a';
   const state = {

@@ -40,13 +40,37 @@ export async function initializeNativeStorage(): Promise<boolean> {
     payload TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`);
+  await database.execute(`CREATE TABLE IF NOT EXISTS pos_collections (
+    key TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`);
 
   window.PosNativeStorage = {
     load: async () => {
+      const collectionResult = await database!.query('SELECT key,payload FROM pos_collections');
+      if (collectionResult.values?.length) {
+        const collections: Record<string, unknown> = {};
+        for (const row of collectionResult.values)
+          collections[String(row.key)] = JSON.parse(String(row.payload));
+        return JSON.stringify({ fastqCollectionsV1: true, collections });
+      }
       const result = await database!.query('SELECT payload FROM pos_state WHERE id = 1');
       return (result.values?.[0]?.payload as string | undefined) ?? null;
     },
     save: async (value) => {
+      try {
+        const envelope = JSON.parse(value);
+        if (envelope?.fastqCollectionsV1) {
+          for (const [key, collection] of Object.entries(envelope.collections || {})) {
+            await database!.run(
+              'INSERT INTO pos_collections(key,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',
+              [key, JSON.stringify(collection), new Date().toISOString()],
+            );
+          }
+          return;
+        }
+      } catch {}
       await database!.run(
         'INSERT INTO pos_state (id, payload, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at',
         [value, new Date().toISOString()],
@@ -54,6 +78,7 @@ export async function initializeNativeStorage(): Promise<boolean> {
     },
     clear: async () => {
       await database!.run('DELETE FROM pos_state WHERE id = 1');
+      await database!.run('DELETE FROM pos_collections');
     },
   };
   return true;

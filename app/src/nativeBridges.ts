@@ -59,7 +59,7 @@ export function installNativeBridges(): () => void {
           'googleBarcodeScannerModuleInstallProgress',
           (event) => {
             if (event.state === GoogleBarcodeScannerModuleInstallState.DOWNLOADING)
-              onProgress?.(`Mengunduh scanner Google · ${event.progress}%`);
+              onProgress?.(`Mengunduh scanner Google, ${event.progress}%`);
             else if (event.state === GoogleBarcodeScannerModuleInstallState.INSTALLING)
               onProgress?.('Memasang scanner Google…');
             else if (event.state === GoogleBarcodeScannerModuleInstallState.COMPLETED)

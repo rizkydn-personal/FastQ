@@ -2,29 +2,30 @@
   <img src="assets/branding/fastq-mark.png" alt="Logo FastQ POS" width="180">
 </p>
 
-<h1 align="center">FastQ POS</h1>
+<h1 align="center" style="font-weight: bold;">FastQ POS</h1>
 
 <p align="center">
   Aplikasi kasir offline-first untuk toko ritel dan F&amp;B.
 </p>
 
-<p align="center">
-  <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=222222">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
-  <img alt="HTML5" src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white">
-  <img alt="CSS3" src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white">
-  <img alt="SQL" src="https://img.shields.io/badge/SQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white">
-</p>
+<h2 align="center">Teknologi</h2>
 
 <p align="center">
-  <img alt="React" src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB">
-  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white">
-  <img alt="Vite" src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white">
-  <img alt="Capacitor" src="https://img.shields.io/badge/Capacitor-119EFF?style=for-the-badge&logo=capacitor&logoColor=white">
-  <img alt="Offline first" src="https://img.shields.io/badge/Offline--first-198754?style=for-the-badge&logo=pwa&logoColor=white">
+  <img src="assets/tech-badges/javascript.svg" height="28" alt="JavaScript" style="border-radius:6px;">
+  <img src="assets/tech-badges/typescript.svg" height="28" alt="TypeScript" style="border-radius:6px;">
+  <img src="assets/tech-badges/html5.svg" height="28" alt="HTML5" style="border-radius:6px;">
+  <img src="assets/tech-badges/css3.svg" height="28" alt="CSS3" style="border-radius:6px;">
+  <img src="assets/tech-badges/react.svg" height="28" alt="React" style="border-radius:6px;">
+  <br>
+  <img src="assets/tech-badges/nodejs.svg" height="28" alt="Node.js" style="border-radius:6px;">
+  <img src="assets/tech-badges/vite.svg" height="28" alt="Vite" style="border-radius:6px;">
+  <img src="assets/tech-badges/postgresql.svg" height="28" alt="PostgreSQL" style="border-radius:6px;">
+  <img src="assets/tech-badges/capacitor.svg" height="28" alt="Capacitor" style="border-radius:6px;">
+  <img src="assets/tech-badges/offline.svg" height="28" alt="Offline first" style="border-radius:6px;">
 </p>
-
+<p align="center">
 Frontend dibangun dengan Vite/React, API berjalan pada Node.js, dan PostgreSQL Supabase menyimpan akun serta data sinkronisasi. Data kerja POS juga disimpan terenkripsi pada perangkat/browser; database tidak menggantikan backup perangkat.
+</p>
 
 ## Production: VPS + Supabase
 
@@ -169,7 +170,125 @@ Gunakan `npm run format` untuk merapikan source dan `npm run format:check` untuk
 
 Jalankan `npm test` untuk seluruh tes. Untuk memeriksa tipe secara terpisah, gunakan `npm run typecheck`.
 
-Untuk Android, pasang seluruh dependency pengembangan lalu gunakan `npm run cap:sync`; Android SDK diperlukan untuk APK.
+### Build aplikasi Android
+
+Gunakan Windows atau Linux yang sudah memasang Node.js 22.12 atau lebih baru, Android Studio, Android SDK Platform, dan build-tools yang sesuai dengan Gradle project. Android Studio juga menyertakan JDK yang direkomendasikan; jika memakai JDK terpisah, pastikan `JAVA_HOME` mengarah ke JDK yang kompatibel dengan Gradle.
+
+Untuk Gradle 8.14.3 dan Android Gradle Plugin 8.13.0, gunakan JDK 21. JDK 26 menghasilkan error `Unsupported class file major version 70` dan tidak kompatibel dengan kombinasi Gradle/AGP saat ini.
+
+Sebelum sinkronisasi, pastikan aplikasi memakai URL API produksi yang benar. Karena permintaan POS memakai path relatif seperti `/api/sync`, konfigurasi Capacitor dapat mengarahkannya ke domain VPS dengan menambahkan `server.url` pada `capacitor.config.ts`:
+
+```ts
+const config: CapacitorConfig = {
+  appId: 'id.co.fastq.pos',
+  appName: 'FastQ',
+  webDir: 'dist',
+  server: {
+    androidScheme: 'https',
+    url: 'https://pos.example.com',
+  },
+};
+```
+
+Gunakan URL domain produksi yang dapat dibuka dengan HTTPS. Jangan memasukkan `/api` pada `server.url` karena aplikasi tetap memanggil `/api/...` sendiri. Untuk pengujian lokal, gunakan alamat jaringan perangkat menuju server, misalnya `http://192.168.1.10:4173`, tetapi tetap pastikan server mendengarkan pada alamat jaringan dan Android dapat mengaksesnya. Hapus atau ganti `server.url` sebelum build rilis jika aplikasi hanya boleh memakai aset lokal.
+
+Sinkronkan web build dan proyek native:
+
+```sh
+npm ci
+npm run build
+npx cap sync android
+```
+
+Perintah `npm run cap:sync` juga dapat dipakai karena script tersebut menjalankan `npm run build && cap sync`.
+
+Untuk membuka Android Studio:
+
+```sh
+npm run android:open
+```
+
+Dari Android Studio, pilih **Build > Build Bundle(s) / APK(s)** atau jalankan dari terminal:
+
+```sh
+cd android
+
+# APK debug untuk pengujian
+./gradlew assembleDebug
+
+# APK release tanpa keystore
+./gradlew assembleRelease
+
+# Android App Bundle untuk Google Play
+./gradlew bundleRelease
+```
+
+Pada Windows PowerShell gunakan `.\gradlew.bat assembleDebug`, `.\gradlew.bat assembleRelease`, atau `.\gradlew.bat bundleRelease`.
+
+Android Studio tidak wajib. Build dapat dijalankan sepenuhnya dari command line selama JDK dan Android SDK/command-line tools sudah terpasang.
+
+Pasang JDK yang kompatibel dengan Gradle, Android SDK Platform, build-tools, dan `cmdline-tools`. Setelah itu atur environment pada Windows:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-21.0.13.1"
+$env:ANDROID_HOME = "C:\Users\$env:USERNAME\AppData\Local\Android\Sdk"
+$env:Path = "$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:Path"
+
+java -version
+javac -version
+adb version
+sdkmanager --list
+```
+
+Pastikan `java -version` dan `javac -version` menampilkan JDK 21. Untuk menjaga JDK ini sebagai JAVA_HOME permanen pada Windows, buka **System Properties > Environment Variables** atau jalankan PowerShell administrator:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  'JAVA_HOME',
+  'C:\Program Files\Microsoft\jdk-21.0.13.1',
+  'User'
+)
+```
+
+Buka terminal baru setelah mengubah `JAVA_HOME`. Jika `JAVA_HOME` lama masih dipakai, hentikan daemon Gradle lama lalu ulangi build:
+
+```powershell
+cd android
+.\gradlew.bat --stop
+.\gradlew.bat assembleDebug
+```
+
+Uji hanya satu environment terminal baru, lalu sinkronkan dan bangun dari direktori repository:
+
+```powershell
+npm ci
+npm run build
+npx cap sync android
+cd android
+.\gradlew.bat assembleDebug
+```
+
+Build tanpa Android Studio tidak memerlukan emulator atau Android Studio IDE. Emulator tetap hanya diperlukan untuk pengujian UI otomatis/interaktif. Untuk pemeriksaan APK pada perangkat, aktifkan USB debugging lalu pasang dengan:
+
+```powershell
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+```
+
+Perintah tersebut dijalankan dari direktori `android`. Jalankan `adb devices` sebelum instalasi untuk memastikan perangkat terlihat.
+
+Untuk rilis Play Store atau distribusi release:
+
+1. Buat upload keystore yang aman, jangan commit file keystore atau password ke Git.
+2. Isi `keystoreProperties` atau signing config pada `android/app/build.gradle`, lalu jalankan bundle release.
+3. Naikkan `versionCode` dan `versionName` di `android/app/build.gradle` untuk setiap build yang dipublikasikan.
+4. Uji APK/AAB pada perangkat nyata untuk login, sinkronisasi, lokasi, SQLite, barcode, dan notifikasi.
+5. Jangan menjalankan migration database dari aplikasi Android; migrasi tetap dijalankan dari komputer admin dengan `POS_MIGRATION_DATABASE_URL`.
+
+Output build:
+
+- Debug APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+- Release APK: `android/app/build/outputs/apk/release/app-release.apk`
+- Release AAB: `android/app/build/outputs/bundle/release/app-release.aab`
 
 ## Fitur
 

@@ -20,7 +20,7 @@ function stockMovementId(createHash, saleId, index) {
 // dicatat dengan alasan yang sama seperti stock.delta klien
 // (`Penjualan <nomor>`) agar event stock.delta yang datang belakangan dikenali
 // sebagai sudah diterapkan dan tidak mengurangi stok dua kali.
-async function decrementStockForSale({ client, sale, scope, productById, createHash }) {
+async function decrementStockForSale({ client, sale, scope, actor, productById, createHash }) {
   const movements = [];
   let stockConflict = false;
   for (const [index, item] of sale.items.entries()) {
@@ -69,8 +69,8 @@ async function decrementStockForSale({ client, sale, scope, productById, createH
   }
   for (const movement of movements) {
     await client.query(
-      `INSERT INTO stock_movements(id,outlet_id,product_id,variant_id,delta,reason,occurred_at)
-       VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO NOTHING`,
+      `INSERT INTO stock_movements(id,outlet_id,product_id,variant_id,delta,reason,occurred_at,user_id)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(id) DO NOTHING`,
       [
         movement.id,
         scope,
@@ -79,6 +79,7 @@ async function decrementStockForSale({ client, sale, scope, productById, createH
         movement.delta,
         `Penjualan ${sale.number}`,
         sale.at,
+        actor.id,
       ],
     );
   }
@@ -197,6 +198,7 @@ export async function applySaleEvent({
       client,
       sale: s,
       scope,
+      actor,
       productById,
       createHash,
     });

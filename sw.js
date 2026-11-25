@@ -1,4 +1,5 @@
 const CACHE = 'fastq-pos-app-v46';
+const MEDIA_CACHE = 'fastq-pos-media-v1';
 const BUILD_ASSETS = [];
 const CORE_ASSETS = [
   './',
@@ -36,12 +37,16 @@ const CORE_ASSETS = [
   './shift-utils.mjs',
   './sync-policy.js',
   './sync-role-policy.mjs',
+  './product-icons.mjs',
   './assets/fonts/inter.woff2',
   './assets/fonts/plus-jakarta-sans.woff2',
 ];
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'FASTQ_ACTIVATE_UPDATE') self.skipWaiting();
+  if (event.data?.type === 'FASTQ_CLEAR_PRODUCT_MEDIA') {
+    event.waitUntil(caches.delete(MEDIA_CACHE));
+  }
 });
 
 self.addEventListener('install', (event) => {
@@ -90,6 +95,31 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const requestUrl = new URL(request.url);
+
+  if (
+    request.method === 'GET' &&
+    requestUrl.origin === self.location.origin &&
+    requestUrl.pathname.startsWith('/media/products/')
+  ) {
+    event.respondWith(
+      caches
+        .open(MEDIA_CACHE)
+        .then(async (cache) => {
+          const cached = await cache.match(request);
+          if (cached) return cached;
+          const response = await fetch(request);
+          if (response.ok) {
+            await cache.put(request, response.clone());
+            const keys = await cache.keys();
+            if (keys.length > 300)
+              await Promise.all(keys.slice(0, keys.length - 300).map((key) => cache.delete(key)));
+          }
+          return response;
+        })
+        .catch(() => fetch(request)),
+    );
+    return;
+  }
 
   if (
     request.method !== 'GET' ||

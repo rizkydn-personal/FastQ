@@ -120,6 +120,7 @@ export function createProductImageHandler({
   isUuid,
   json,
   securityHeaders = () => ({}),
+  corsHeaders = () => ({}),
   now = () => Date.now(),
 }) {
   const uploadWindows = new Map();
@@ -218,6 +219,7 @@ export function createProductImageHandler({
     const data = Buffer.from(result.rows[0].data);
     res.writeHead(200, {
       ...securityHeaders(),
+      ...corsHeaders(req),
       'Content-Type': result.rows[0].content_type,
       'Content-Length': data.length,
       'Cache-Control': 'private, max-age=31536000, immutable',

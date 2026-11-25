@@ -299,7 +299,22 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
       const serialized = await window.parent.PosNativeStorage.load();
       if (serialized) {
         const loaded = JSON.parse(serialized);
-        if (loaded?.fastqCollectionsV1) return loaded.collections || null;
+        if (loaded?.fastqCollectionsV1) {
+          const collections = loaded.collections || {};
+          const restored = {};
+          for (const [key, value] of Object.entries(collections)) {
+            if (typeof value === 'string') {
+              try {
+                restored[key] = JSON.parse(value);
+              } catch {
+                restored[key] = value;
+              }
+            } else {
+              restored[key] = value;
+            }
+          }
+          return restored;
+        }
         return loaded;
       }
       // Migrate snapshots created by the web build before native SQLite was enabled.

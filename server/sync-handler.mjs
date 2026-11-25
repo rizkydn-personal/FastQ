@@ -8,6 +8,7 @@ import { applyDiscountEvent } from './sync-discount-handler.mjs';
 import { applyCashEvent } from './sync-cash-handler.mjs';
 import { applySaleEvent } from './sync-sale-handler.mjs';
 import { applyCatalogEvent } from './sync-catalog-handler.mjs';
+import { applyBulkCatalogEvent } from './sync-bulk-catalog-handler.mjs';
 import { roleEventTypes } from '../shared/sync-role-policy.mjs';
 import { collectScopedEntityIds } from './sync-scope-policy.mjs';
 import { matchesStoredSyncEvent } from './sync-event-policy.mjs';
@@ -21,6 +22,8 @@ function collectAffectedStockProductIds(events, isUuid) {
       if (isUuid(value)) productIds.add(value);
     };
     if (event.type === 'product.upsert') add(payload.id);
+    else if (event.type === 'product.bulkUpsert' && Array.isArray(payload.products))
+      for (const product of payload.products) add(product?.id);
     else if (
       event.type === 'stock.delta' ||
       event.type === 'stock.reconcile' ||
@@ -31,6 +34,30 @@ function collectAffectedStockProductIds(events, isUuid) {
       for (const item of payload.items) add(item?.productId);
   }
   return [...productIds];
+}
+
+function instrumentQueryClient(client, metrics) {
+  const query = client.query.bind(client);
+  return new Proxy(client, {
+    get(target, property) {
+      if (property === 'query')
+        return (...args) => {
+          const startedAt = performance.now();
+          metrics.queryCount += 1;
+          try {
+            const result = query(...args);
+            return result.finally(() => {
+              metrics.queryDurationMs += performance.now() - startedAt;
+            });
+          } catch (error) {
+            metrics.queryDurationMs += performance.now() - startedAt;
+            throw error;
+          }
+        };
+      const value = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
 }
 
 export function createSyncHandler({
@@ -128,7 +155,9 @@ export function createSyncHandler({
         error: 'deviceId, cursor, activeShiftId valid, dan maksimum 100 event wajib dikirim.',
       });
     const roleEvents = roleEventTypes[actor.role] || new Set();
-    const client = await pool.connect();
+    const syncStartedAt = performance.now();
+    const queryMetrics = { queryCount: 0, queryDurationMs: 0 };
+    const client = instrumentQueryClient(await pool.connect(), queryMetrics);
     const accepted = [];
     const rejected = [];
     const stockConflicts = [];
@@ -137,6 +166,7 @@ export function createSyncHandler({
     let transfers;
     let outlets;
     let bootstrapProducts = [];
+    let bootstrapAttendance = [];
     let cursor;
     let needsBootstrap = false;
     let bootstrapTruncated = false;
@@ -173,6 +203,46 @@ export function createSyncHandler({
         );
       const batchEventIds = new Set();
       const scopeValidationBudget = { inspectedObjects: 0, entityIds: 0 };
+      const categoryCache = new Map();
+      const eventScopeIds = new Map();
+      const eventScopeErrors = new Map();
+      const allScopeIds = new Set();
+      if (scope) {
+        for (const event of body.events) {
+          if (
+            !event ||
+            typeof event !== 'object' ||
+            !event.payload ||
+            typeof event.payload !== 'object'
+          )
+            continue;
+          try {
+            const ids = collectScopedEntityIds(event, {
+              scope,
+              isUuid,
+              budget: scopeValidationBudget,
+            });
+            eventScopeIds.set(event, ids);
+            for (const id of ids) allScopeIds.add(id);
+          } catch (error) {
+            eventScopeErrors.set(event, error);
+          }
+        }
+      }
+      const foreignEntityIds = new Set();
+      if (scope && allScopeIds.size) {
+        const foreign = await client.query(
+          `SELECT id FROM (
+          SELECT id,outlet_id FROM products UNION ALL SELECT id,outlet_id FROM customers
+          UNION ALL SELECT id,outlet_id FROM shifts UNION ALL SELECT id,outlet_id FROM sales
+          UNION ALL SELECT movement.id,shift.outlet_id FROM cash_movements movement JOIN shifts shift ON shift.id=movement.shift_id
+          UNION ALL SELECT id,outlet_id FROM attendance
+          UNION ALL SELECT v.id,p.outlet_id FROM product_variants v JOIN products p ON p.id=v.product_id
+        ) entities WHERE id=ANY($1::uuid[]) AND outlet_id IS DISTINCT FROM $2::uuid`,
+          [[...allScopeIds], scope],
+        );
+        for (const row of foreign.rows) foreignEntityIds.add(row.id);
+      }
       for (const event of body.events) {
         await client.query('SAVEPOINT sync_event');
         try {
@@ -246,6 +316,8 @@ export function createSyncHandler({
               { status: 403 },
             );
           if (scope) {
+            const scopeError = eventScopeErrors.get(event);
+            if (scopeError) throw scopeError;
             const deny = () => {
               throw Object.assign(
                 new Error(
@@ -256,22 +328,8 @@ export function createSyncHandler({
             };
             if (event.outletId !== scope) deny();
             if (event.type === 'outlet.upsert' && event.payload.id !== scope) deny();
-            const ids = collectScopedEntityIds(event, {
-              scope,
-              isUuid,
-              budget: scopeValidationBudget,
-            });
-            const foreign = await client.query(
-              `SELECT id FROM (
-          SELECT id,outlet_id FROM products UNION ALL SELECT id,outlet_id FROM customers
-          UNION ALL SELECT id,outlet_id FROM shifts UNION ALL SELECT id,outlet_id FROM sales
-          UNION ALL SELECT movement.id,shift.outlet_id FROM cash_movements movement JOIN shifts shift ON shift.id=movement.shift_id
-          UNION ALL SELECT id,outlet_id FROM attendance
-          UNION ALL SELECT v.id,p.outlet_id FROM product_variants v JOIN products p ON p.id=v.product_id
-        ) entities WHERE id=ANY($1::uuid[]) AND outlet_id IS DISTINCT FROM $2::uuid LIMIT 1`,
-              [[...ids], scope],
-            );
-            if (foreign.rowCount) deny();
+            const ids = eventScopeIds.get(event) || new Set();
+            if ([...ids].some((id) => foreignEntityIds.has(id))) deny();
           }
           const inserted = await client.query(
             `INSERT INTO sync_events(event_id,device_id,outlet_id,event_type,payload,occurred_at)
@@ -340,7 +398,24 @@ export function createSyncHandler({
               'customer.upsert',
             ].includes(event.type)
           ) {
-            await applyCatalogEvent({ client, event, scope, deviceId: body.deviceId, isUuid });
+            await applyCatalogEvent({
+              client,
+              event,
+              scope,
+              actor,
+              deviceId: body.deviceId,
+              isUuid,
+              categoryCache,
+            });
+          } else if (event.type === 'product.bulkUpsert') {
+            await applyBulkCatalogEvent({
+              client,
+              event,
+              scope,
+              actor,
+              isUuid,
+              createHash,
+            });
           } else if (event.type === 'shift.upsert') {
             await applyShiftEvent({ client, event, scope, actor, deviceId: body.deviceId, isUuid });
           } else if (event.type === 'sale.upsert') {
@@ -463,6 +538,26 @@ export function createSyncHandler({
             stockConflicts.push({ saleId, stockConflict: true, stockBalances: balances });
         }
       }
+      const attendanceRows = await client.query(
+        `SELECT id,outlet_id,user_id,user_name,work_date::text AS work_date,
+                check_in,check_out,check_in_location,check_out_location
+         FROM attendance
+         WHERE outlet_id=$1
+           AND ($2::text <> 'Kasir' OR user_id=$3::uuid)
+         ORDER BY work_date DESC,check_in DESC LIMIT 5000`,
+        [scope, actor.role, actor.id],
+      );
+      bootstrapAttendance = attendanceRows.rows.map((row) => ({
+        id: row.id,
+        outletId: row.outlet_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        workDate: row.work_date,
+        checkIn: row.check_in,
+        checkOut: row.check_out,
+        checkInLocation: row.check_in_location,
+        checkOutLocation: row.check_out_location,
+      }));
       let balances;
       if (needsBootstrap) {
         balances = await client.query(
@@ -606,6 +701,8 @@ export function createSyncHandler({
             ...(actor.role === 'Kasir' ? {} : { cost: Number(product.cost) }),
             minStock: Number(product.min_stock),
             favorite: !!metadata.favorite,
+            icon: metadata.icon || 'cube',
+            imageId: metadata.imageId || null,
             stock,
             stockByOutlet: { ...(metadata.stockByOutlet || {}), [scope]: stock },
             variants: productVariants,
@@ -623,6 +720,23 @@ export function createSyncHandler({
       await client.query('ROLLBACK');
       throw error;
     } finally {
+      const eventTypes = {};
+      for (const event of body.events) {
+        const type = typeof event?.type === 'string' ? event.type : 'invalid';
+        eventTypes[type] = (eventTypes[type] || 0) + 1;
+      }
+      console.info(
+        JSON.stringify({
+          event: 'sync.transaction',
+          transactionDurationMs: Math.round(performance.now() - syncStartedAt),
+          queryCount: queryMetrics.queryCount,
+          queryDurationMs: Math.round(queryMetrics.queryDurationMs),
+          eventCount: body.events.length,
+          acceptedCount: accepted.length,
+          rejectedCount: rejected.length,
+          eventTypes,
+        }),
+      );
       client.release();
     }
     const events = filterRemoteSyncEvents(remote.rows, actor.role, body.deviceId);
@@ -649,6 +763,7 @@ export function createSyncHandler({
         openingCash: Number(row.opening_cash_rupiah),
         expectedCash: row.expected_cash_rupiah === null ? null : Number(row.expected_cash_rupiah),
         physicalCash: row.physical_cash_rupiah === null ? null : Number(row.physical_cash_rupiah),
+        actualCash: row.physical_cash_rupiah === null ? null : Number(row.physical_cash_rupiah),
         difference: row.difference_rupiah === null ? null : Number(row.difference_rupiah),
         cashier: metadata.cashier || null,
         openedBy: metadata.openedBy || metadata.cashier || null,
@@ -670,6 +785,7 @@ export function createSyncHandler({
       bootstrapProducts,
       catalogBootstrapped: needsBootstrap,
       bootstrapTruncated,
+      attendance: bootstrapAttendance,
       activeShift,
       knownShift,
       cursor,

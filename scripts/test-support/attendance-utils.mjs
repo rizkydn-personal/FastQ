@@ -48,5 +48,5 @@ export function attendanceLocationMarkup(location) {
   const latitude = Number(location.latitude),
     longitude = Number(location.longitude),
     coordinates = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-  return `<div class="attendance-location"><a href="https://www.google.com/maps?q=${latitude},${longitude}" target="_blank" rel="noopener noreferrer">Lihat peta</a><small>${coordinates} · ±${Math.round(Number(location.accuracy) || 0)} m</small></div>`;
+  return `<div class="attendance-location"><a href="https://www.google.com/maps?q=${latitude},${longitude}" target="_blank" rel="noopener noreferrer">Lihat peta</a><small>${coordinates}, ±${Math.round(Number(location.accuracy) || 0)} m</small></div>`;
 }

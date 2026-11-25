@@ -271,8 +271,10 @@ test('a rejected event rolls back to its savepoint while the rest of its batch i
       at: new Date().toISOString(),
     },
   }));
+  const queries = [];
   const client = {
     async query(sql) {
+      queries.push(sql);
       if (sql.includes('minimum_cursor')) return { rows: [{ minimum_cursor: 0 }], rowCount: 1 };
       if (sql.includes('last_cursor')) return { rows: [], rowCount: 0 };
       if (sql.includes('SELECT id FROM (')) return { rows: [], rowCount: 0 };
@@ -307,4 +309,5 @@ test('a rejected event rolls back to its savepoint while the rest of its batch i
   assert.equal(response.body.rejected[0].id, events[2].id);
   assert.equal(response.body.rejected[0].code, 'SYNC_EVENT_REJECTED');
   assert.equal(response.body.rejected[0].retryable, false);
+  assert.equal(queries.filter((sql) => sql.includes('SELECT id FROM (')).length, 1);
 });

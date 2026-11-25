@@ -10,6 +10,7 @@ import {
   prepareSyncOutbox,
 } from '../shared/sync-policy.js';
 import { roleEventTypes } from '../shared/sync-role-policy.mjs';
+import { PRODUCT_ICONS, isProductIcon } from '../shared/product-icons.mjs';
 
 const source = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
 const runtimeSource = await readFile(new URL('../app/pos/runtime.js', import.meta.url), 'utf8');
@@ -29,6 +30,8 @@ const executableRuntimeSource = runtimeSource
   .concat('\nglobalThis.createPosRuntime = createPosRuntime;');
 function loadPosRuntime(context) {
   if (!context.structuredClone) context.structuredClone = structuredClone;
+  context.PRODUCT_ICONS ||= PRODUCT_ICONS;
+  context.isProductIcon ||= isProductIcon;
   if (!context.collectPendingStockProductIds)
     context.collectPendingStockProductIds = collectPendingStockProductIds;
   runInNewContext(executableRuntimeSource, context);
@@ -86,6 +89,10 @@ function pendingClearState(syncOutbox = []) {
 test('POS status strings do not contain common UTF-8 mojibake markers', () => {
   assert.doesNotMatch(runtimeSource, /[ÂÃ]/);
 });
+test('product cards never render image and icon fallback at the same time', () => {
+  assert.match(posPageSource, /if \(!imageId\)[\s\S]*return `<span[\s\S]*>[\s\S]*<\/span>`/);
+  assert.doesNotMatch(posPageSource, /<img[\s\S]*nextElementSibling[\s\S]*hidden/);
+});
 test('cashier confirmations use custom dialogs instead of browser prompts', () => {
   assert.doesNotMatch(
     `${posPageSource}\n${appSource}`,
@@ -131,6 +138,34 @@ test('action dialog submissions show a busy state and restore the button after f
   assert.match(posPageSource, /Menyimpan…/);
   assert.match(posPageSource, /button\.removeAttribute\('aria-busy'\)/);
 });
+test('shift, attendance, and held-order controls derive their labels from runtime state', () => {
+  assert.match(posPageSource, /id="activeShiftStatusText"/);
+  assert.match(posPageSource, /activeShift \? 'Shift aktif' : 'Belum ada shift'/);
+  assert.match(posPageSource, /activeShift \? 'Tutup shift' : 'Buka shift'/);
+  assert.match(posPageSource, /id="attendanceInButton"/);
+  assert.match(posPageSource, /id="attendanceOutButton"/);
+  assert.match(posPageSource, /Mengambil lokasi/);
+  assert.match(posPageSource, /id="attendanceActionStatusMobile"/);
+  assert.match(posPageSource, /lg:hidden mt-0\.5/);
+  assert.doesNotMatch(posPageSource, /id="attendanceActionStatus"/);
+  assert.match(posPageSource, /id="resumeHeldOrdersButton"/);
+  assert.match(posPageSource, /Pulihkan \(\$\{holds\.length\}\)/);
+  assert.match(posPageSource, /function scheduleRuntimeRefresh\(data\)/);
+  assert.match(posPageSource, /if \(currentPage === 'produk'\) renderProductsTable\(\)/);
+});
+test('attendance controls do not include hard-coded sample staff or outlet data', () => {
+  assert.doesNotMatch(posPageSource, /data-dd-option="(?:Admin Uji|Kasir Uji|Manajer Uji)"/);
+  assert.doesNotMatch(posPageSource, /const todayDate = '22 Nov 2026'/);
+  assert.match(posPageSource, /window\.PosRuntime\?\.getStateSnapshot\?\.\(\)\.outlet/);
+});
+test('mobile product header keeps actions compact without text overlap', () => {
+  assert.match(posPageSource, /id="btnStockHistory"/);
+  assert.match(posPageSource, /aria-label="Impor Excel"/);
+  assert.match(posPageSource, /aria-label="Tambah produk"/);
+  assert.match(designSystemSource, /#page-produk > \.tab-fixed-header/);
+  assert.match(designSystemSource, /#page-produk > \.tab-fixed-header button/);
+  assert.match(designSystemSource, /width: 36px;/);
+});
 test('product Excel template contains the expected spreadsheet columns', () => {
   const context = { window: { fflate: { strToU8, zipSync } } };
   runInNewContext(productXlsxSource, context);
@@ -141,6 +176,55 @@ test('product Excel template contains the expected spreadsheet columns', () => {
     assert.ok(worksheet.includes(`<t>${header}</t>`));
   for (const unsupportedField of ['Barcode', 'Satuan', 'Stok Minimum'])
     assert.ok(!worksheet.includes(`<t>${unsupportedField}</t>`));
+});
+test('attendance events include the geolocation capture timestamp required by the server', async () => {
+  const savedState = {
+    settings: {
+      serverSession: {
+        user: {
+          id: '00000000-0000-4000-8000-000000000001',
+          name: 'Admin',
+          role: 'Admin',
+          outletId: '00000000-0000-4000-8000-000000000002',
+        },
+      },
+    },
+    activeOutlet: '00000000-0000-4000-8000-000000000002',
+  };
+  const context = {
+    AbortController,
+    AbortSignal,
+    createPosStorage: () => ({
+      readSavedState: async () => savedState,
+      queueEncryptedState() {},
+      flushEncryptedWrites: async () => {},
+    }),
+    createUuid: () => '00000000-0000-4000-8000-000000000003',
+    navigator: {
+      onLine: false,
+      geolocation: {
+        getCurrentPosition(success) {
+          success({
+            timestamp: 1_795_642_800_000,
+            coords: { latitude: -6.2, longitude: 106.8, accuracy: 10 },
+          });
+        },
+      },
+    },
+    roleEventTypes,
+  };
+  loadPosRuntime(context);
+
+  const runtime = await context.createPosRuntime();
+  await runtime.setAttendance('in');
+
+  const attendanceEvent = runtime.state.syncOutbox.find(
+    (event) => event.type === 'attendance.upsert',
+  );
+  assert.equal(
+    attendanceEvent.payload.checkInLocation.capturedAt,
+    new Date(1_795_642_800_000).toISOString(),
+  );
 });
 test('POS runtime preserves a saved catalog when restoring state', async () => {
   const savedState = {
@@ -167,6 +251,23 @@ test('POS runtime preserves a saved catalog when restoring state', async () => {
   assert.equal(restored.catalogInitialized, true);
   assert.equal(restored.settings.localDataOutletId, 'outlet-a');
 });
+test('sales trend chart uses a contained responsive viewBox and direct line segments', () => {
+  assert.match(posPageSource, /preserveAspectRatio="xMidYMid meet"/);
+  assert.match(posPageSource, /h-\[380px\]/);
+  assert.match(posPageSource, /reportChartCanvas[\s\S]*h-\[220px\][\s\S]*flex-1/);
+  assert.match(posPageSource, /const linePath = points[\s\S]*\.join\(' '\)/);
+});
+
+test('top product orbit label distinguishes top-five units from all period items', () => {
+  assert.match(posPageSource, /unit teratas/);
+  assert.match(posPageSource, /slice\(0, 5\)/);
+  assert.match(posPageSource, /itemCount = sales\.reduce/);
+  assert.match(posPageSource, /h-\[380px\]/);
+  assert.match(posPageSource, /h-\[230px\]/);
+  assert.match(posPageSource, /productOrbitTopMeta/);
+  assert.match(posPageSource, /#\$\{index \+ 1\} \| \$\{share\}%/);
+});
+
 test('refreshing recent sales updates report data without changing older-page cursor', async () => {
   const olderCursor = { before: '2026-11-20T10:00:00.000Z', beforeId: 'older-sale' };
   const savedState = {
@@ -214,6 +315,47 @@ test('refreshing recent sales updates report data without changing older-page cu
   );
   assert.deepEqual(runtime.state.settings.salesCursor, olderCursor);
 });
+test('stock history filters use custom kind and date controls', () => {
+  assert.match(posPageSource, /id="stockHistoryKind"[\s\S]*type="button"[\s\S]*data-dd-menu/);
+  assert.match(posPageSource, /selectStockHistoryKind\('Semua', 'Semua jenis'\)/);
+  assert.match(posPageSource, /id="stockHistoryFrom"[\s\S]*h-px w-px[\s\S]*opacity-0/);
+  assert.match(posPageSource, /id="stockHistoryTo"[\s\S]*h-px w-px[\s\S]*opacity-0/);
+  assert.match(posPageSource, /updateStockHistoryDateLabel/);
+  assert.match(posPageSource, /openStockHistoryDatePicker\('stockHistoryFrom'\)/);
+  assert.match(posPageSource, /openStockHistoryDatePicker\('stockHistoryTo'\)/);
+  assert.match(posPageSource, /grid grid-cols-2 sm:flex sm:items-center/);
+  assert.doesNotMatch(posPageSource, /id="stockHistorySearch"[^>]*class="[^"]*\bcol-span-2\b/);
+});
+test('offline stock history pages contain at most 10 rows and support previous and next', async () => {
+  const savedState = {
+    ...pendingClearState(),
+    stockMovements: Array.from({ length: 23 }, (_, index) => ({
+      id: `30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      productId: '40000000-0000-4000-8000-000000000001',
+      at: new Date(Date.UTC(2026, 10, 25, 0, 0, index)).toISOString(),
+      delta: 1,
+      reason: 'Penyesuaian stok',
+    })),
+  };
+  const { runtime } = await createClearRuntime(savedState);
+
+  const first = await runtime.loadStockHistory();
+  assert.equal(first.movements.length, 10);
+  assert.equal(first.page, 1);
+  assert.equal(first.hasPrevious, false);
+  assert.equal(first.hasMore, true);
+
+  const second = await runtime.loadStockHistory({}, false, 'next');
+  assert.equal(second.movements.length, 10);
+  assert.equal(second.page, 2);
+  assert.equal(second.hasPrevious, true);
+  assert.equal(second.hasMore, true);
+
+  const previous = await runtime.loadStockHistory({}, false, 'prev');
+  assert.equal(previous.movements.length, 10);
+  assert.equal(previous.page, 1);
+  assert.equal(previous.hasPrevious, false);
+});
 test('product import updates matching SKU and name, and suffixes conflicting SKUs', async () => {
   const savedState = {
     products: [
@@ -250,6 +392,7 @@ test('product import updates matching SKU and name, and suffixes conflicting SKU
   let uuid = 0;
   const context = {
     AbortSignal,
+    TextEncoder,
     createPosStorage: () => ({
       readSavedState: async () => savedState,
       queueEncryptedState() {},
@@ -331,23 +474,71 @@ test('product import updates matching SKU and name, and suffixes conflicting SKU
     runtime.state.products.find((product) => product.id === 'existing-match').category,
     'Kategori Lama',
   );
+  const updatedMatch = runtime.state.syncOutbox
+    .filter((event) => event.type === 'product.bulkUpsert')
+    .flatMap((event) => event.payload.products)
+    .find((product) => product.id === 'existing-match');
+  assert.equal(updatedMatch.stock, 5);
+  assert.equal(updatedMatch.stockDelta, 3);
   assert.ok(runtime.state.products.some((product) => product.sku === 'BASE-D'));
   assert.ok(runtime.state.products.some((product) => product.sku === 'BASE-D2'));
   const duplicateProduct = runtime.state.products.find((product) => product.sku === 'DUP');
   assert.equal(duplicateProduct.stock, 10);
-  const duplicateUpserts = runtime.state.syncOutbox.filter(
-    (event) => event.type === 'product.upsert' && event.payload.sku === 'DUP',
+  const duplicateUpserts = runtime.state.syncOutbox.flatMap((event) =>
+    event.type === 'product.bulkUpsert'
+      ? event.payload.products.filter((product) => product.sku === 'DUP')
+      : [],
   );
-  assert.equal(duplicateUpserts.length, 2);
-  assert.equal(duplicateUpserts[0].payload.stock, 5);
-  assert.equal(duplicateUpserts[0].payload.stockByOutlet['outlet-a'], 5);
-  assert.equal(duplicateUpserts[1].payload.stock, 10);
-  assert.equal(duplicateUpserts[1].payload.stockByOutlet['outlet-a'], 5);
-  const duplicateDeltas = runtime.state.syncOutbox.filter(
-    (event) => event.type === 'stock.delta' && event.payload.productId === duplicateProduct.id,
+  assert.equal(duplicateUpserts.length, 1);
+  assert.equal(duplicateUpserts[0].stock, 10);
+  assert.equal(duplicateUpserts[0].stockDelta, null);
+  assert.equal(
+    runtime.state.syncOutbox.some(
+      (event) => event.type === 'stock.delta' && event.payload.productId === duplicateProduct.id,
+    ),
+    false,
   );
-  assert.equal(duplicateDeltas.length, 1);
-  assert.equal(duplicateDeltas[0].payload.delta, 5);
+});
+test('product import chunks bulk events at 500 products', async () => {
+  const savedState = {
+    products: [],
+    settings: {
+      serverSession: {
+        user: { id: 'admin-a', role: 'Admin', outletId: 'outlet-a' },
+      },
+    },
+    activeOutlet: 'outlet-a',
+  };
+  let uuid = 0;
+  const context = {
+    AbortSignal,
+    TextEncoder,
+    createPosStorage: () => ({
+      readSavedState: async () => savedState,
+      queueEncryptedState() {},
+      flushEncryptedWrites: async () => {},
+    }),
+    createUuid: () => `generated-${++uuid}`,
+    navigator: { onLine: false },
+    roleEventTypes,
+  };
+  loadPosRuntime(context);
+  const runtime = await context.createPosRuntime();
+  await runtime.importProducts(
+    Array.from({ length: 501 }, (_, index) => ({
+      sku: `SKU-${index}`,
+      name: `Produk ${index}`,
+      category: 'Kategori',
+      price: 1000,
+      cost: 500,
+      stock: 0,
+    })),
+  );
+  const batches = runtime.state.syncOutbox.filter((event) => event.type === 'product.bulkUpsert');
+  assert.deepEqual(
+    Array.from(batches, (event) => event.payload.products.length),
+    [500, 1],
+  );
 });
 test('clearing local data skips sync when no events are pending', async () => {
   const { runtime, operations } = await createClearRuntime(pendingClearState());

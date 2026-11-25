@@ -98,3 +98,97 @@ test('product upsert accepts a negative stock balance after an offline sale conf
   const stockInsert = calls.find((call) => call.sql.includes('INSERT INTO stock_balances'));
   assert.equal(JSON.parse(stockInsert.values[0])[0].quantity, -2);
 });
+
+test('product icon and image fields are stored independently', async () => {
+  const calls = [];
+  const client = {
+    query: async (sql, values) => {
+      calls.push({ sql, values });
+      if (sql.includes('SELECT id,sku,barcode,outlet_id,metadata FROM products'))
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              id: '00000000-0000-4000-8000-000000000004',
+              sku: 'SKU-VISUAL',
+              barcode: null,
+              outlet_id: outletId,
+              metadata: {
+                icon: 'coffee',
+                imageId: '00000000-0000-4000-8000-000000000009',
+              },
+            },
+          ],
+        };
+      if (sql.includes('INSERT INTO categories'))
+        return { rowCount: 1, rows: [{ id: customerId }] };
+      if (sql.includes('UPDATE products'))
+        return { rowCount: 1, rows: [{ id: '00000000-0000-4000-8000-000000000004' }] };
+      return { rowCount: 1, rows: [] };
+    },
+  };
+  await applyCatalogEvent({
+    client,
+    scope: outletId,
+    deviceId: eventId,
+    isUuid,
+    event: {
+      id: eventId,
+      type: 'product.upsert',
+      outletId,
+      payload: {
+        id: '00000000-0000-4000-8000-000000000004',
+        sku: 'SKU-VISUAL',
+        name: 'Produk visual',
+        price: 100,
+        stockByOutlet: { [outletId]: 2 },
+        category: 'Uji',
+        icon: 'bread',
+      },
+    },
+  });
+  const write = calls.find((call) => call.sql.includes('UPDATE products'));
+  const metadata = write.values[10];
+  assert.equal(metadata.icon, 'bread');
+  assert.equal(metadata.imageId, '00000000-0000-4000-8000-000000000009');
+});
+
+test('plain product upserts skip variant aggregation queries and reuse batch categories', async () => {
+  const { calls, client } = queryRecorder();
+  await applyCatalogEvent({
+    client,
+    scope: outletId,
+    deviceId: eventId,
+    isUuid,
+    categoryCache: new Map([['00000000-0000-4000-8000-000000000001\u0000Uji', customerId]]),
+    event: {
+      id: eventId,
+      type: 'product.upsert',
+      outletId,
+      payload: {
+        id: '00000000-0000-4000-8000-000000000004',
+        sku: 'SKU-PLAIN',
+        name: 'Produk tanpa varian',
+        price: 100,
+        stockByOutlet: { [outletId]: 2 },
+        category: 'Uji',
+      },
+    },
+  });
+  assert.equal(
+    calls.some((call) => call.sql.includes('INSERT INTO categories')),
+    false,
+  );
+  assert.equal(
+    calls.some((call) => call.sql.includes('UPDATE product_variants')),
+    false,
+  );
+  assert.equal(
+    calls.some(
+      (call) =>
+        call.sql.includes('UPDATE stock_balances parent') &&
+        call.sql.includes('JOIN product_variants'),
+    ),
+    false,
+  );
+});

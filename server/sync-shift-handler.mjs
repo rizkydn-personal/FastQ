@@ -1,6 +1,7 @@
 export async function applyShiftEvent({ client, event, scope, actor, deviceId, isUuid }) {
   if (event.type === 'shift.upsert') {
     const s = event.payload;
+    s.physicalCash ??= s.actualCash;
     if (!isUuid(s.id) || !Number.isSafeInteger(s.openingCash) || s.openingCash < 0)
       throw Object.assign(new Error('Data shift tidak valid.'), { status: 400 });
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`fastq-shift:${scope}`]);

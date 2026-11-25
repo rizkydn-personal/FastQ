@@ -37,6 +37,16 @@ export async function isServerReachable(isOnline, probe) {
 export function collectPendingStockDeltas(events) {
   const deltas = new Map();
   for (const event of Array.isArray(events) ? events : []) {
+    if (event?.type === 'product.bulkUpsert' && Array.isArray(event.payload?.products)) {
+      for (const product of event.payload.products) {
+        const quantity =
+          product.stockDelta == null ? Number(product.stock) : Number(product.stockDelta);
+        if (!Number.isFinite(quantity) || typeof product.id !== 'string') continue;
+        const key = `${event.outletId}|${product.id}|`;
+        deltas.set(key, (deltas.get(key) || 0) + quantity);
+      }
+      continue;
+    }
     if (
       !event ||
       typeof event !== 'object' ||
@@ -68,6 +78,9 @@ export function collectPendingStockProductIds(events) {
     ) {
       const productId = event.type === 'product.upsert' ? payload.id : payload.productId;
       if (typeof productId === 'string' && productId) productIds.add(productId);
+    } else if (event.type === 'product.bulkUpsert' && Array.isArray(payload.products)) {
+      for (const product of payload.products)
+        if (typeof product?.id === 'string' && product.id) productIds.add(product.id);
     } else if (event.type === 'sale.upsert' && Array.isArray(payload.items)) {
       for (const item of payload.items)
         if (typeof item?.productId === 'string' && item.productId) productIds.add(item.productId);
@@ -238,6 +251,8 @@ export function restoreOfflineOutletState(state, cachedSession) {
 
 export function mergeShiftEvent(state, shift) {
   if (!shift?.id) return null;
+  if (shift.actualCash == null && shift.physicalCash != null)
+    shift = { ...shift, actualCash: shift.physicalCash };
   state.shifts ||= [];
   let current = state.shifts.find((item) => item.id === shift.id);
   if (current?.closedAt && !shift.closedAt) {

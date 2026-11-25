@@ -31,6 +31,8 @@ test('readiness reports role and missing schema blockers together', async () => 
               sync_devices: true,
               sync_event_retention: false,
               auth_sessions: true,
+              product_images: true,
+              product_images: true,
             },
           ],
         };
@@ -63,6 +65,8 @@ test('readiness accepts the required role, tables, and migration version', async
               sync_devices: true,
               sync_event_retention: true,
               auth_sessions: true,
+              product_images: true,
+              product_images: true,
             },
           ],
         };
@@ -94,6 +98,8 @@ test('readiness blocks an older schema before applying required security migrati
               sync_devices: true,
               sync_event_retention: true,
               auth_sessions: true,
+              product_images: true,
+              product_images: true,
             },
           ],
         };
@@ -107,7 +113,7 @@ test('readiness blocks an older schema before applying required security migrati
 });
 
 test('readiness requires the negative-stock database migration', async () => {
-  assert.equal(REQUIRED_SCHEMA_VERSION, 6);
+  assert.equal(REQUIRED_SCHEMA_VERSION, 8);
   const pool = {
     async query(sql) {
       if (sql.includes('pg_roles')) return { rowCount: 1, rows: [noPrivileges] };
@@ -122,6 +128,8 @@ test('readiness requires the negative-stock database migration', async () => {
               sync_devices: true,
               sync_event_retention: true,
               auth_sessions: true,
+              product_images: true,
+              product_images: true,
             },
           ],
         };
@@ -149,6 +157,8 @@ test('readiness blocks runtime schema write grants and unavailable privilege che
               sync_devices: true,
               sync_event_retention: true,
               auth_sessions: true,
+              product_images: true,
+              product_images: true,
             },
           ],
         };
@@ -173,6 +183,8 @@ test('readiness blocks runtime schema write grants and unavailable privilege che
                 sync_devices: true,
                 sync_event_retention: true,
                 auth_sessions: true,
+                product_images: true,
+                product_images: true,
               },
             ],
           };

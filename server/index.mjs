@@ -12,6 +12,8 @@ import { createDashboardHandler } from './dashboard-handler.mjs';
 import { postgresConnectionTlsStatus, postgresSslFromEnv } from './postgres-config.mjs';
 import { serveStaticFile } from './static-files.mjs';
 import { createSalesHandler } from './sales-handler.mjs';
+import { createStockHistoryHandler } from './stock-history-handler.mjs';
+import { createProductImageHandler } from './product-image-handler.mjs';
 import { createSyncHandler } from './sync-handler.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -596,6 +598,21 @@ async function readJson(req, maxBytes = 2_000_000) {
   return value;
 }
 
+async function readBinary(req, maxBytes) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > maxBytes)
+      throw Object.assign(new Error('Ukuran gambar melebihi 30 KB.'), {
+        status: 413,
+        code: 'PRODUCT_IMAGE_TOO_LARGE',
+      });
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks, size);
+}
+
 async function saveBackup(req, res) {
   if (!pool) return json(res, 503, { error: 'DATABASE_URL belum dikonfigurasi.' });
   requireSameOrigin(req);
@@ -696,6 +713,16 @@ async function printLan(req, res) {
 
 const ownerDashboard = createDashboardHandler({ pool, activeSession, json });
 const salesHistory = createSalesHandler({ pool, activeSession, json, isUuid });
+const stockHistory = createStockHistoryHandler({ pool, activeSession, json, isUuid });
+const productImages = createProductImageHandler({
+  pool,
+  activeSession,
+  requireSameOrigin,
+  readBinary,
+  isUuid,
+  json,
+  securityHeaders,
+});
 const syncEvents = createSyncHandler({
   pool,
   activeSession,
@@ -747,6 +774,9 @@ createServer(async (req, res) => {
       return await ownerDashboard(req, res, url);
     if (url.pathname === '/api/sales' && req.method === 'GET')
       return await salesHistory(req, res, url);
+    if (url.pathname === '/api/stock-movements') return await stockHistory(req, res, url);
+    if (url.pathname === '/api/product-images' && req.method === 'POST')
+      return await productImages.upload(req, res);
     if (url.pathname === '/api/sync') return await syncEvents(req, res, url);
     if (url.pathname === '/api/backup' && req.method === 'POST') return await saveBackup(req, res);
     if (url.pathname === '/api/backup' && req.method === 'GET')
@@ -754,6 +784,12 @@ createServer(async (req, res) => {
     if (url.pathname === '/api/print' && req.method === 'POST') return await printLan(req, res);
     if (url.pathname.startsWith('/api/'))
       return json(res, 404, { error: 'Endpoint API tidak ditemukan.' });
+    const productImageMatch = url.pathname.match(/^\/media\/products\/([^/]+)$/);
+    if (productImageMatch && req.method === 'GET') {
+      if (!(await refreshSchemaReady()))
+        return json(res, 503, { error: 'Skema database belum siap.' });
+      return await productImages.serve(req, res, productImageMatch[1]);
+    }
 
     return await serveStaticFile(res, url, {
       staticRoot,

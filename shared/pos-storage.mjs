@@ -28,6 +28,7 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
   let encryptedRetryAttempt = 0;
   let writeFailureReported = false;
   let clearing = false;
+  let collectionHashes = new Map();
   const writeMetrics = {
     completedWrites: 0,
     failedWrites: 0,
@@ -39,6 +40,7 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
     lastDurableWriteMs: 0,
     lastTotalWriteMs: 0,
     backend: null,
+    lastError: null,
   };
   const monotonicNow = () => globalThis.performance?.now?.() ?? Date.now();
 
@@ -54,6 +56,17 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
           latest = pendingEncryptedSnapshot;
           pendingEncryptedSnapshot = null;
           const serializationStarted = monotonicNow();
+          const snapshotObject =
+            latest && typeof latest === 'object' && !Array.isArray(latest) ? latest : {};
+          const collectionEntries = Object.entries(snapshotObject).map(([key, value]) => [
+            key,
+            JSON.stringify(value),
+          ]);
+          const changedCollections = collectionEntries.filter(([key, serialized]) => {
+            if (collectionHashes.get(key) === serialized) return false;
+            collectionHashes.set(key, serialized);
+            return true;
+          });
           const serialized = JSON.stringify(latest);
           const serializationMs = Math.max(0, monotonicNow() - serializationStarted);
           const snapshotChars = serialized.length;
@@ -67,7 +80,7 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
             writeMetrics.largestSerializationMs,
             serializationMs,
           );
-          const writeResult = await writeEncryptedState(serialized);
+          const writeResult = await writeEncryptedCollections(snapshotObject, changedCollections);
           writeMetrics.completedWrites++;
           writeMetrics.lastEncryptionMs = writeResult.encryptionMs;
           writeMetrics.lastDurableWriteMs = writeResult.durableWriteMs;
@@ -82,8 +95,12 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
             onWriteSuccess();
           } catch {}
         }
-      } catch {
+      } catch (error) {
         writeMetrics.failedWrites++;
+        writeMetrics.lastError =
+          error && typeof error === 'object'
+            ? { name: error.name, message: error.message, code: error.code || null }
+            : { name: 'Error', message: String(error), code: null };
         if (pendingEncryptedSnapshot === null && latest !== null) pendingEncryptedSnapshot = latest;
         if (!writeFailureReported) {
           writeFailureReported = true;
@@ -174,6 +191,7 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
         totalWriteMs: Math.max(0, monotonicNow() - writeStarted),
       };
     }
+
     const db = secureDb || (secureDb = await openSecureDb());
     const key = deviceKey || (deviceKey = await getDeviceKey(db));
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -192,6 +210,55 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
       encryptionMs,
       durableWriteMs: Math.max(0, completedAt - durableWriteStarted),
       totalWriteMs: Math.max(0, completedAt - writeStarted),
+    };
+  }
+
+  async function writeEncryptedCollections(snapshot, changedCollections) {
+    if (window.parent !== window && window.parent.PosNativeStorage) {
+      const envelope = JSON.stringify({
+        fastqCollectionsV1: true,
+        collections: Object.fromEntries(changedCollections),
+        manifest: Object.fromEntries(Object.keys(snapshot).map((key) => [key, true])),
+      });
+      const writeStarted = monotonicNow();
+      await window.parent.PosNativeStorage.save(envelope);
+      return {
+        backend: 'native-sqlite-collections',
+        encryptionMs: null,
+        durableWriteMs: Math.max(0, monotonicNow() - writeStarted),
+        totalWriteMs: Math.max(0, monotonicNow() - writeStarted),
+      };
+    }
+    const db = secureDb || (secureDb = await openSecureDb());
+    const key = deviceKey || (deviceKey = await getDeviceKey(db));
+    const writeStarted = monotonicNow();
+    let totalEncryptionMs = 0;
+    for (const [collectionKey, serializedValue] of changedCollections) {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encryptionStarted = monotonicNow();
+      const cipher = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        new TextEncoder().encode(serializedValue),
+      );
+      totalEncryptionMs += monotonicNow() - encryptionStarted;
+      await idbWrite(db, 'records', `collection:${collectionKey}`, { version: 1, iv, cipher });
+    }
+    const manifest = JSON.stringify(Object.keys(snapshot));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encryptionStarted = monotonicNow();
+    const cipher = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      new TextEncoder().encode(manifest),
+    );
+    totalEncryptionMs += monotonicNow() - encryptionStarted;
+    await idbWrite(db, 'records', 'collection-manifest', { version: 1, iv, cipher });
+    return {
+      backend: 'indexeddb-aes-gcm-collections',
+      encryptionMs: totalEncryptionMs,
+      durableWriteMs: Math.max(0, monotonicNow() - writeStarted),
+      totalWriteMs: Math.max(0, monotonicNow() - writeStarted),
     };
   }
 
@@ -230,7 +297,11 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
   async function readSavedState() {
     if (window.parent !== window && window.parent.PosNativeStorage) {
       const serialized = await window.parent.PosNativeStorage.load();
-      if (serialized) return JSON.parse(serialized);
+      if (serialized) {
+        const loaded = JSON.parse(serialized);
+        if (loaded?.fastqCollectionsV1) return loaded.collections || null;
+        return loaded;
+      }
       // Migrate snapshots created by the web build before native SQLite was enabled.
     }
     secureDb = await openSecureDb();
@@ -238,6 +309,54 @@ export function createPosStorage(onWriteFailure = () => {}, onWriteSuccess = () 
     const record = await idbRequest(
       secureDb.transaction('records', 'readonly').objectStore('records').get('state'),
     );
+    const manifestRecord = await idbRequest(
+      secureDb.transaction('records', 'readonly').objectStore('records').get('collection-manifest'),
+    );
+    if (manifestRecord) {
+      let manifestKeys;
+      try {
+        const plain = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: manifestRecord.iv },
+          deviceKey,
+          manifestRecord.cipher,
+        );
+        manifestKeys = JSON.parse(new TextDecoder().decode(plain));
+      } catch {
+        throw new Error('Daftar koleksi lokal terenkripsi tidak dapat dibuka.');
+      }
+      const restored = {};
+      if (record) {
+        try {
+          const plain = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: record.iv },
+            deviceKey,
+            record.cipher,
+          );
+          Object.assign(restored, JSON.parse(new TextDecoder().decode(plain)));
+        } catch {}
+      }
+      for (const collectionKey of manifestKeys) {
+        const collectionRecord = await idbRequest(
+          secureDb
+            .transaction('records', 'readonly')
+            .objectStore('records')
+            .get(`collection:${collectionKey}`),
+        );
+        if (!collectionRecord) continue;
+        try {
+          const plain = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: collectionRecord.iv },
+            deviceKey,
+            collectionRecord.cipher,
+          );
+          restored[collectionKey] = JSON.parse(new TextDecoder().decode(plain));
+        } catch {
+          throw new Error(`Koleksi lokal "${collectionKey}" tidak dapat dibuka.`);
+        }
+      }
+      removeLegacyStorage();
+      return restored;
+    }
     if (record) {
       let restored;
       try {

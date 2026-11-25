@@ -70,3 +70,22 @@ test('cashiers do not receive product or variant cost from catalog events', () =
   });
   assert.equal(product.payload.variants[0].cost, 5000);
 });
+
+test('cashiers do not receive product cost from bulk catalog events', () => {
+  const bulk = {
+    device_id: 'device-a',
+    event_type: 'product.bulkUpsert',
+    payload: {
+      products: [
+        { id: 'product-a', cost: 4000, price: 7000 },
+        { id: 'product-b', price: 9000 },
+      ],
+    },
+  };
+  const [filtered] = filterRemoteSyncEvents([bulk], 'Kasir', 'device-b');
+  assert.deepEqual(filtered.payload.products, [
+    { id: 'product-a', price: 7000 },
+    { id: 'product-b', price: 9000 },
+  ]);
+  assert.equal(bulk.payload.products[0].cost, 4000);
+});
